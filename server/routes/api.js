@@ -1,6 +1,53 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { pool } = require('../database');
+
+// إعداد multer لرفع الملفات
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, '../../uploads');
+        
+        // التأكد من وجود مجلد uploads
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // إنشاء اسم ملف فريد
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        const extension = path.extname(originalName);
+        const baseName = path.basename(originalName, extension);
+        
+        cb(null, `${baseName}-${uniqueSuffix}${extension}`);
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    // السماح بملفات PDF و الصور فقط
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+        return cb(null, true);
+    } else {
+        cb(new Error('نوع الملف غير مدعوم. الرجاء رفع ملفات PDF أو صور فقط.'));
+    }
+};
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // حد أقصى 5 ميجابايت
+    },
+    fileFilter: fileFilter
+});
 
 // 🧪 API اختبار الاتصال
 router.get('/test', async (req, res) => {
@@ -167,8 +214,8 @@ router.get('/suppliers', async (req, res) => {
     }
 });
 
-// ➕ API إضافة فاتورة جديدة (نسخة مبسطة بدون رفع ملفات)
-router.post('/invoices', express.json(), async (req, res) => {
+// ➕ API إضافة فاتورة جديدة مع رفع الملفات
+router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
     const client = await pool.connect();
     
     try {
@@ -186,6 +233,7 @@ router.post('/invoices', express.json(), async (req, res) => {
         } = req.body;
 
         console.log('البيانات المستلمة:', req.body);
+        console.log('الملف المرفوع:', req.file ? req.file.filename : 'لا يوجد ملف');
 
         // التحقق من البيانات المطلوبة
         if (!invoiceNumber || !supplierName || !invoiceType || !category || !invoiceDate || !amountBeforeTax) {
@@ -228,7 +276,13 @@ router.post('/invoices', express.json(), async (req, res) => {
         const taxAmountNum = parseFloat(taxAmount) || 0;
         const totalAmount = amountBeforeTaxNum + taxAmountNum;
 
-        // إدراج الفاتورة (بدون ملف)
+        // مسار الملف المرفوع
+        let filePath = null;
+        if (req.file) {
+            filePath = `/uploads/${req.file.filename}`;
+        }
+
+        // إدراج الفاتورة
         const insertQuery = `
             INSERT INTO invoices (
                 invoice_number,
@@ -239,8 +293,9 @@ router.post('/invoices', express.json(), async (req, res) => {
                 amount_before_tax,
                 tax_amount,
                 total_amount,
-                notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                notes,
+                file_path
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             RETURNING id
         `;
         
@@ -253,24 +308,35 @@ router.post('/invoices', express.json(), async (req, res) => {
             amountBeforeTaxNum,
             taxAmountNum,
             totalAmount,
-            notes || null
+            notes || null,
+            filePath
         ]);
 
         await client.query('COMMIT');
 
         res.json({
             success: true,
-            message: 'تم حفظ الفاتورة بنجاح',
+            message: 'تم حفظ الفاتورة بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
             data: {
                 id: insertResult.rows[0].id,
                 invoice_number: invoiceNumber,
-                total_amount: totalAmount
+                total_amount: totalAmount,
+                file_uploaded: !!req.file
             }
         });
 
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('خطأ في إضافة الفاتورة:', error);
+        
+        // حذف الملف المرفوع في حالة الخطأ
+        if (req.file) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (unlinkError) {
+                console.error('خطأ في حذف الملف:', unlinkError);
+            }
+        }
         
         res.json({
             success: false,
@@ -279,6 +345,25 @@ router.post('/invoices', express.json(), async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+// معالجة الأخطاء العامة
+router.use((error, req, res, next) => {
+    console.error('خطأ في API:', error);
+    
+    if (error instanceof multer.MulterError) {
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.json({
+                success: false,
+                message: 'حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت'
+            });
+        }
+    }
+    
+    res.json({
+        success: false,
+        message: 'حدث خطأ في الخادم'
+    });
 });
 
 module.exports = router;
