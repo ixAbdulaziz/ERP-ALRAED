@@ -336,31 +336,18 @@
                             <label for="invoiceType" class="form-label required-field">نوع الفاتورة</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="fas fa-tags"></i></span>
-                                <select class="form-select" id="invoiceType" name="invoiceType" required>
-                                    <option value="">اختر نوع الفاتورة...</option>
-                                    <option value="مشتريات">مشتريات</option>
-                                    <option value="خدمات">خدمات</option>
-                                    <option value="استشارات">استشارات</option>
-                                    <option value="صيانة">صيانة</option>
-                                    <option value="أخرى">أخرى</option>
-                                </select>
+                                <input type="text" class="form-control" id="invoiceType" name="invoiceType" 
+                                       placeholder="مثال: مشتريات، خدمات، استشارات..." required>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="category" class="form-label required-field">فئة الفاتورة</label>
+                        <label for="category" class="form-label required-field">اسم الفئة</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-folder"></i></span>
-                            <select class="form-select" id="category" name="category" required>
-                                <option value="">اختر الفئة...</option>
-                                <option value="مكتبية">مستلزمات مكتبية</option>
-                                <option value="تقنية">معدات تقنية</option>
-                                <option value="نظافة">مستلزمات نظافة</option>
-                                <option value="كهربائية">مستلزمات كهربائية</option>
-                                <option value="خدمات_عامة">خدمات عامة</option>
-                                <option value="أخرى">أخرى</option>
-                            </select>
+                            <input type="text" class="form-control" id="category" name="category" 
+                                   placeholder="مثال: مستلزمات مكتبية، معدات تقنية، مستلزمات نظافة..." required>
                         </div>
                     </div>
                 </div>
