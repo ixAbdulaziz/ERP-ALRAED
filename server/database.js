@@ -8,16 +8,7 @@ const dbPath = path.join(__dirname, '../database.sqlite');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('❌ خطأ في الاتصال بقاعدة البيانات:', err.message);
-    // تصدير قاعدة البيانات والوظائف
-module.exports = {
-    db,
-    getAllSuppliers,
-    getAllInvoices,
-    getStats,
-    getRecentInvoices,
-    getSuppliersWithStats,
-    getAllPurchaseOrders
-}; else {
+    } else {
         console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
         initializeDatabase();
     }
@@ -33,8 +24,11 @@ function initializeDatabase() {
         name TEXT NOT NULL UNIQUE,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
-        if (err) console.error('خطأ في إنشاء جدول الموردين:', err);
-        else console.log('✅ جدول الموردين جاهز');
+        if (err) {
+            console.error('خطأ في إنشاء جدول الموردين:', err);
+        } else {
+            console.log('✅ جدول الموردين جاهز');
+        }
     });
 
     // جدول الفواتير (محدث حسب المتطلبات)
@@ -52,8 +46,11 @@ function initializeDatabase() {
         file_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
-        if (err) console.error('خطأ في إنشاء جدول الفواتير:', err);
-        else console.log('✅ جدول الفواتير جاهز');
+        if (err) {
+            console.error('خطأ في إنشاء جدول الفواتير:', err);
+        } else {
+            console.log('✅ جدول الفواتير جاهز');
+        }
     });
 
     // جدول أوامر الشراء (مبسط)
@@ -64,11 +61,12 @@ function initializeDatabase() {
         amount DECIMAL(10,2) NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`, (err) => {
-        if (err) console.error('خطأ في إنشاء جدول أوامر الشراء:', err);
-        else console.log('✅ جدول أوامر الشراء جاهز');
-        
-        // انتهاء إنشاء الجداول
-        console.log('🎉 تم إنشاء جميع الجداول بنجاح - قاعدة البيانات جاهزة للاستخدام!');
+        if (err) {
+            console.error('خطأ في إنشاء جدول أوامر الشراء:', err);
+        } else {
+            console.log('✅ جدول أوامر الشراء جاهز');
+            console.log('🎉 تم إنشاء جميع الجداول بنجاح - قاعدة البيانات جاهزة للاستخدام!');
+        }
     });
 }
 
@@ -78,8 +76,11 @@ function initializeDatabase() {
 function getAllSuppliers() {
     return new Promise((resolve, reject) => {
         db.all("SELECT * FROM suppliers ORDER BY name", (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         });
     });
 }
@@ -88,8 +89,11 @@ function getAllSuppliers() {
 function getAllInvoices() {
     return new Promise((resolve, reject) => {
         db.all(`SELECT * FROM invoices ORDER BY created_at DESC`, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         });
     });
 }
@@ -101,24 +105,31 @@ function getStats() {
         
         // عدد الموردين
         db.get("SELECT COUNT(*) as count FROM suppliers", (err, row) => {
-            if (err) return reject(err);
+            if (err) {
+                return reject(err);
+            }
             stats.suppliersCount = row.count;
             
             // عدد الفواتير
             db.get("SELECT COUNT(*) as count FROM invoices", (err, row) => {
-                if (err) return reject(err);
+                if (err) {
+                    return reject(err);
+                }
                 stats.invoicesCount = row.count;
                 
                 // عدد أوامر الشراء
                 db.get("SELECT COUNT(*) as count FROM purchase_orders", (err, row) => {
-                    if (err) return reject(err);
+                    if (err) {
+                        return reject(err);
+                    }
                     stats.ordersCount = row.count;
                     
                     // إجمالي المبالغ المستحقة (بدون ضريبة)
                     db.get("SELECT SUM(amount_before_tax) as total FROM invoices", (err, row) => {
-                        if (err) return reject(err);
+                        if (err) {
+                            return reject(err);
+                        }
                         stats.totalAmount = row.total || 0;
-                        
                         resolve(stats);
                     });
                 });
@@ -131,8 +142,11 @@ function getStats() {
 function getRecentInvoices() {
     return new Promise((resolve, reject) => {
         db.all(`SELECT * FROM invoices ORDER BY created_at DESC LIMIT 5`, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         });
     });
 }
@@ -148,8 +162,11 @@ function getSuppliersWithStats() {
         LEFT JOIN invoices i ON s.name = i.supplier_name
         GROUP BY s.name
         ORDER BY s.name`, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         });
     });
 }
@@ -158,8 +175,11 @@ function getSuppliersWithStats() {
 function getAllPurchaseOrders() {
     return new Promise((resolve, reject) => {
         db.all(`SELECT * FROM purchase_orders ORDER BY created_at DESC`, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
         });
     });
 }
