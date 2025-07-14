@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
+const { initializeDatabase } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 3000;
 console.log('🚀 بدء تشغيل الخادم...');
 
 // إعدادات الوسائط
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -16,45 +15,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// ===== APIs بسيطة جداً =====
-
-// اختبار أساسي
-app.get('/api/test', (req, res) => {
-    res.json({
-        success: true,
-        message: 'الخادم يعمل بنجاح!',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// إحصائيات وهمية
-app.get('/api/stats', (req, res) => {
-    res.json({
-        success: true,
-        data: {
-            suppliersCount: 0,
-            invoicesCount: 0,
-            ordersCount: 0,
-            totalAmount: 0
-        }
-    });
-});
-
-// موردين فارغ
-app.get('/api/suppliers-with-stats', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
-});
-
-// فواتير فارغة
-app.get('/api/recent-invoices', (req, res) => {
-    res.json({
-        success: true,
-        data: []
-    });
-});
+// ===== ربط APIs الحقيقية =====
+app.use('/api', require('./routes/api'));
 
 // ===== الصفحات =====
 
@@ -78,6 +40,15 @@ app.get('/view', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/view.html'));
 });
 
+// معالجة الأخطاء
+app.use((err, req, res, next) => {
+    console.error('خطأ في الخادم:', err);
+    res.status(500).json({
+        success: false,
+        message: 'حدث خطأ في الخادم'
+    });
+});
+
 // 404
 app.use((req, res) => {
     res.status(404).send(`
@@ -88,10 +59,27 @@ app.use((req, res) => {
     `);
 });
 
-// تشغيل الخادم
-app.listen(PORT, () => {
-    console.log(`✅ الخادم يعمل على المنفذ ${PORT}`);
-    console.log(`🌐 الموقع متاح على Railway`);
-});
+// تهيئة قاعدة البيانات وتشغيل الخادم
+async function startServer() {
+    try {
+        console.log('🔄 تهيئة قاعدة البيانات...');
+        await initializeDatabase();
+        console.log('✅ تم تهيئة قاعدة البيانات بنجاح');
+        
+        app.listen(PORT, () => {
+            console.log(`✅ الخادم يعمل على المنفذ ${PORT}`);
+            console.log(`🌐 الموقع متاح على Railway`);
+        });
+    } catch (error) {
+        console.error('❌ خطأ في تهيئة قاعدة البيانات:', error);
+        
+        // تشغيل الخادم حتى لو فشلت قاعدة البيانات
+        app.listen(PORT, () => {
+            console.log(`⚠️ الخادم يعمل على المنفذ ${PORT} (بدون قاعدة بيانات)`);
+        });
+    }
+}
+
+startServer();
 
 module.exports = app;
