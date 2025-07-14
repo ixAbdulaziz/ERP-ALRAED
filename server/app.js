@@ -5,6 +5,12 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// استيراد قاعدة البيانات وتهيئتها
+require('./database');
+
+// استيراد routes للـ APIs
+const apiRoutes = require('./routes/api');
+
 // إعدادات الوسائط (Middleware)
 app.use(cors());
 app.use(express.json());
@@ -13,6 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 // خدمة الملفات الثابتة (CSS, JS, Images)
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// ربط APIs
+app.use('/api', apiRoutes);
 
 // ===== توجيه الصفحات الرئيسية =====
 
@@ -36,23 +45,14 @@ app.get('/view', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/view.html'));
 });
 
-// ===== واجهات برمجة التطبيقات (APIs) =====
-
-// اختبار الخادم
-app.get('/api/test', (req, res) => {
-    res.json({ 
-        message: 'خادم نظام إدارة المشتريات يعمل بنجاح!', 
-        timestamp: new Date().toISOString(),
-        version: '1.0.0'
-    });
-});
-
 // معالجة الأخطاء - في حالة عدم وجود الصفحة
 app.use((req, res) => {
     res.status(404).send(`
-        <h1>الصفحة غير موجودة</h1>
-        <p>الصفحة التي تبحث عنها غير متاحة.</p>
-        <a href="/">العودة للصفحة الرئيسية</a>
+        <div style="text-align: center; font-family: 'Cairo', sans-serif; padding: 50px; direction: rtl;">
+            <h1 style="color: #dc3545;">404 - الصفحة غير موجودة</h1>
+            <p style="color: #666; font-size: 18px;">الصفحة التي تبحث عنها غير متاحة.</p>
+            <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">العودة للصفحة الرئيسية</a>
+        </div>
     `);
 });
 
@@ -61,6 +61,7 @@ app.listen(PORT, () => {
     console.log(`🚀 خادم نظام إدارة المشتريات يعمل على المنفذ ${PORT}`);
     console.log(`🌐 يمكنك الوصول للموقع عبر: http://localhost:${PORT}`);
     console.log(`📱 Railway URL: سيتم توفيرها تلقائياً عند النشر`);
+    console.log(`🔌 APIs متاحة على: /api/test`);
 });
 
 module.exports = app;
