@@ -1,1 +1,625 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة المشتريات - الرائد</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts - Arabic -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .main-container {
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .navbar-custom {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .stats-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            margin-bottom: 20px;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(31, 38, 135, 0.5);
+        }
+        
+        .stats-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .stats-label {
+            font-size: 1.1rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .suppliers-section {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .supplier-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+        
+        .supplier-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.5);
+        }
+        
+        .recent-invoices {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+        
+        .invoice-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        
+        .invoice-item:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.3);
+        }
+        
+        .search-box {
+            border-radius: 25px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+        
+        .search-box:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+        }
+        
+        .section-title {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .fade-in {
+            animation: fadeIn 1s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Navigation Bar -->
+        <nav class="navbar navbar-expand-lg navbar-custom fade-in">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold fs-4" href="/">
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+                    نظام إدارة المشتريات - الرائد
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active fw-semibold" href="/">
+                                <i class="fas fa-home me-1"></i> الرئيسية
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold" href="/purchase-orders">
+                                <i class="fas fa-shopping-cart me-1"></i> أوامر الشراء
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold" href="/add">
+                                <i class="fas fa-plus me-1"></i> إضافة فاتورة
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold" href="/view">
+                                <i class="fas fa-eye me-1"></i> عرض الفواتير
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
 
+        <!-- Statistics Cards -->
+        <div class="row fade-in">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon text-primary">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stats-number text-primary" id="suppliersCount">24</div>
+                    <div class="stats-label">إجمالي الموردين</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon text-success">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div class="stats-number text-success" id="invoicesCount">156</div>
+                    <div class="stats-label">إجمالي الفواتير</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon text-warning">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="stats-number text-warning" id="ordersCount">89</div>
+                    <div class="stats-label">أوامر الشراء</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <div class="stats-icon text-danger">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stats-number text-danger" id="totalAmount">245,500</div>
+                    <div class="stats-label">المبالغ المستحقة (ريال)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Suppliers Section -->
+            <div class="col-lg-8">
+                <div class="suppliers-section fade-in">
+                    <h3 class="section-title">
+                        <i class="fas fa-users text-primary me-2"></i>
+                        الموردين
+                    </h3>
+                    
+                    <!-- Search Box -->
+                    <div class="mb-4">
+                        <input type="text" class="form-control search-box" id="supplierSearch" 
+                               placeholder="البحث عن مورد...">
+                    </div>
+                    
+                    <!-- Suppliers Grid -->
+                    <div class="row" id="suppliersGrid">
+                        <div class="col-md-6">
+                            <div class="supplier-card" onclick="viewSupplier('شركة الإمدادات الذكية')">
+                                <h5 class="fw-bold mb-2">شركة الإمدادات الذكية</h5>
+                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 23</p>
+                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 45,200 ريال</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="supplier-card" onclick="viewSupplier('مؤسسة التقنية المتقدمة')">
+                                <h5 class="fw-bold mb-2">مؤسسة التقنية المتقدمة</h5>
+                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 18</p>
+                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 32,800 ريال</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="supplier-card" onclick="viewSupplier('شركة الحلول المبتكرة')">
+                                <h5 class="fw-bold mb-2">شركة الحلول المبتكرة</h5>
+                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 31</p>
+                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 67,500 ريال</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="supplier-card" onclick="viewSupplier('مكتب الخدمات الشاملة')">
+                                <h5 class="fw-bold mb-2">مكتب الخدمات الشاملة</h5>
+                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 12</p>
+                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 28,900 ريال</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-primary btn-custom">
+                            <i class="fas fa-plus me-1"></i> إضافة مورد جديد
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Invoices Section -->
+            <div class="col-lg-4">
+                <div class="recent-invoices fade-in">
+                    <h3 class="section-title">
+                        <i class="fas fa-clock text-warning me-2"></i>
+                        أحدث الفواتير
+                    </h3>
+                    
+                    <div id="recentInvoices">
+                        <div class="invoice-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">فاتورة #001256</h6>
+                                    <small class="text-muted">شركة الإمدادات الذكية</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">4,500 ريال</div>
+                                    <small class="text-muted">اليوم</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="invoice-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">فاتورة #001255</h6>
+                                    <small class="text-muted">مؤسسة التقنية المتقدمة</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">7,200 ريال</div>
+                                    <small class="text-muted">أمس</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="invoice-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">فاتورة #001254</h6>
+                                    <small class="text-muted">شركة الحلول المبتكرة</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">12,800 ريال</div>
+                                    <small class="text-muted">قبل يومين</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="invoice-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">فاتورة #001253</h6>
+                                    <small class="text-muted">مكتب الخدمات الشاملة</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">3,400 ريال</div>
+                                    <small class="text-muted">قبل 3 أيام</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="invoice-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">فاتورة #001252</h6>
+                                    <small class="text-muted">شركة الإمدادات الذكية</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-success">8,900 ريال</div>
+                                    <small class="text-muted">قبل أسبوع</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="/view" class="btn btn-outline-primary btn-custom">
+                            <i class="fas fa-eye me-1"></i> عرض جميع الفواتير
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // متغيرات لحفظ البيانات
+        let currentStats = {};
+        let currentSuppliers = [];
+        let currentInvoices = [];
+
+        // Search functionality
+        document.getElementById('supplierSearch').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const supplierCards = document.querySelectorAll('.supplier-card');
+            
+            supplierCards.forEach(card => {
+                const supplierName = card.querySelector('h5').textContent.toLowerCase();
+                const parentCol = card.closest('.col-md-6');
+                
+                if (supplierName.includes(searchTerm)) {
+                    parentCol.style.display = 'block';
+                } else {
+                    parentCol.style.display = 'none';
+                }
+            });
+        });
+        
+        // View supplier details
+        function viewSupplier(supplierName) {
+            alert(`عرض تفاصيل المورد: ${supplierName}\n\nسيتم تطوير هذه الوظيفة في المرحلة القادمة.`);
+        }
+        
+        // Animate numbers on page load
+        function animateNumbers() {
+            const numbers = document.querySelectorAll('.stats-number');
+            numbers.forEach(number => {
+                const target = parseInt(number.textContent.replace(/,/g, ''));
+                let current = 0;
+                const increment = target / 50;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= target) {
+                        number.textContent = target.toLocaleString();
+                        clearInterval(timer);
+                    } else {
+                        number.textContent = Math.floor(current).toLocaleString();
+                    }
+                }, 30);
+            });
+        }
+
+        // جلب إحصائيات النظام
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentStats = result.data;
+                    updateStatsDisplay();
+                } else {
+                    console.error('خطأ في جلب الإحصائيات:', result.message);
+                    // عرض أصفار في حالة الخطأ
+                    currentStats = {
+                        suppliersCount: 0,
+                        invoicesCount: 0,
+                        ordersCount: 0,
+                        totalAmount: 0
+                    };
+                    updateStatsDisplay();
+                }
+            } catch (error) {
+                console.error('خطأ في الاتصال:', error);
+                // عرض أصفار في حالة عدم الاتصال
+                currentStats = {
+                    suppliersCount: 0,
+                    invoicesCount: 0,
+                    ordersCount: 0,
+                    totalAmount: 0
+                };
+                updateStatsDisplay();
+            }
+        }
+
+        // تحديث عرض الإحصائيات
+        function updateStatsDisplay() {
+            document.getElementById('suppliersCount').textContent = currentStats.suppliersCount || 0;
+            document.getElementById('invoicesCount').textContent = currentStats.invoicesCount || 0;
+            document.getElementById('ordersCount').textContent = currentStats.ordersCount || 0;
+            document.getElementById('totalAmount').textContent = (currentStats.totalAmount || 0).toLocaleString();
+            
+            // تشغيل الأنيميشن بعد تحديث الأرقام
+            setTimeout(animateNumbers, 200);
+        }
+
+        // جلب الموردين مع إحصائياتهم
+        async function loadSuppliers() {
+            try {
+                const response = await fetch('/api/suppliers-with-stats');
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentSuppliers = result.data;
+                    updateSuppliersDisplay();
+                } else {
+                    console.error('خطأ في جلب الموردين:', result.message);
+                    updateSuppliersDisplay([]);
+                }
+            } catch (error) {
+                console.error('خطأ في الاتصال:', error);
+                updateSuppliersDisplay([]);
+            }
+        }
+
+        // تحديث عرض الموردين
+        function updateSuppliersDisplay() {
+            const suppliersGrid = document.getElementById('suppliersGrid');
+            
+            if (currentSuppliers.length === 0) {
+                suppliersGrid.innerHTML = `
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">لا يوجد موردين بعد</h5>
+                            <p class="text-muted">قم بإضافة فاتورة لإنشاء مورد تلقائياً</p>
+                            <a href="/add" class="btn btn-primary btn-custom">
+                                <i class="fas fa-plus me-1"></i> إضافة فاتورة
+                            </a>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            currentSuppliers.forEach(supplier => {
+                html += `
+                    <div class="col-md-6">
+                        <div class="supplier-card" onclick="viewSupplier('${supplier.name}')">
+                            <h5 class="fw-bold mb-2">${supplier.name}</h5>
+                            <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: ${supplier.invoice_count}</p>
+                            <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: ${supplier.total_amount.toLocaleString()} ريال</p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            suppliersGrid.innerHTML = html;
+        }
+
+        // جلب أحدث الفواتير
+        async function loadRecentInvoices() {
+            try {
+                const response = await fetch('/api/recent-invoices');
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentInvoices = result.data;
+                    updateRecentInvoicesDisplay();
+                } else {
+                    console.error('خطأ في جلب الفواتير:', result.message);
+                    updateRecentInvoicesDisplay([]);
+                }
+            } catch (error) {
+                console.error('خطأ في الاتصال:', error);
+                updateRecentInvoicesDisplay([]);
+            }
+        }
+
+        // تحديث عرض أحدث الفواتير
+        function updateRecentInvoicesDisplay() {
+            const recentInvoicesContainer = document.getElementById('recentInvoices');
+            
+            if (currentInvoices.length === 0) {
+                recentInvoicesContainer.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">لا توجد فواتير بعد</h6>
+                        <p class="text-muted mb-3">ابدأ بإضافة أول فاتورة</p>
+                        <a href="/add" class="btn btn-primary btn-custom btn-sm">
+                            <i class="fas fa-plus me-1"></i> إضافة فاتورة
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            currentInvoices.forEach(invoice => {
+                // تنسيق التاريخ
+                const date = new Date(invoice.invoice_date);
+                const today = new Date();
+                const diffTime = Math.abs(today - date);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let timeText;
+                if (diffDays === 1) timeText = 'اليوم';
+                else if (diffDays === 2) timeText = 'أمس';
+                else if (diffDays <= 7) timeText = `قبل ${diffDays - 1} أيام`;
+                else timeText = `قبل ${Math.ceil(diffDays / 7)} أسابيع`;
+
+                html += `
+                    <div class="invoice-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="fw-bold mb-1">فاتورة ${invoice.invoice_number}</h6>
+                                <small class="text-muted">${invoice.supplier_name}</small>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-bold text-success">${invoice.total_amount.toLocaleString()} ريال</div>
+                                <small class="text-muted">${timeText}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            recentInvoicesContainer.innerHTML = html;
+        }
+
+        // تحميل جميع البيانات عند تحميل الصفحة
+        async function loadAllData() {
+            console.log('🔄 تحميل البيانات...');
+            await Promise.all([
+                loadStats(),
+                loadSuppliers(),
+                loadRecentInvoices()
+            ]);
+            console.log('✅ تم تحميل جميع البيانات');
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            loadAllData();
+        });
+        
+        // Test API connection
+        fetch('/api/test')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ APIs Test:', data);
+            })
+            .catch(error => {
+                console.error('❌ API Error:', error);
+            });
+    </script>
+</body>
+</html>
