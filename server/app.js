@@ -5,112 +5,93 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// إعدادات الوسائط (Middleware)
+console.log('🚀 بدء تشغيل الخادم...');
+
+// إعدادات الوسائط
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// خدمة الملفات الثابتة (CSS, JS, Images)
+// خدمة الملفات الثابتة
 app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// تهيئة قاعدة البيانات أولاً
-console.log('🚀 بدء تشغيل الخادم...');
+// ===== APIs بسيطة جداً =====
 
-// استيراد قاعدة البيانات (سيتم تهيئتها تلقائياً)
-require('./database');
-
-// تأخير بسيط للتأكد من تهيئة قاعدة البيانات
-setTimeout(() => {
-    try {
-        // استيراد routes للـ APIs بعد تهيئة قاعدة البيانات
-        const apiRoutes = require('./routes/api');
-        app.use('/api', apiRoutes);
-        console.log('✅ تم تحميل APIs بنجاح');
-    } catch (error) {
-        console.error('❌ خطأ في تحميل APIs:', error.message);
-    }
-}, 1000);
-
-// ===== توجيه الصفحات الرئيسية =====
-
-// الصفحة الرئيسية - لوحة المعلومات
-app.get('/', (req, res) => {
-    try {
-        res.sendFile(path.join(__dirname, '../views/home.html'));
-    } catch (error) {
-        console.error('خطأ في تحميل الصفحة الرئيسية:', error);
-        res.status(500).send('خطأ في تحميل الصفحة');
-    }
-});
-
-// صفحة أوامر الشراء
-app.get('/purchase-orders', (req, res) => {
-    try {
-        res.sendFile(path.join(__dirname, '../views/purchase-orders.html'));
-    } catch (error) {
-        console.error('خطأ في تحميل صفحة أوامر الشراء:', error);
-        res.status(500).send('خطأ في تحميل الصفحة');
-    }
-});
-
-// صفحة إضافة فاتورة جديدة
-app.get('/add', (req, res) => {
-    try {
-        res.sendFile(path.join(__dirname, '../views/add.html'));
-    } catch (error) {
-        console.error('خطأ في تحميل صفحة إضافة الفاتورة:', error);
-        res.status(500).send('خطأ في تحميل الصفحة');
-    }
-});
-
-// صفحة عرض فواتير مورد معين
-app.get('/view', (req, res) => {
-    try {
-        res.sendFile(path.join(__dirname, '../views/view.html'));
-    } catch (error) {
-        console.error('خطأ في تحميل صفحة عرض الفواتير:', error);
-        res.status(500).send('خطأ في تحميل الصفحة');
-    }
-});
-
-// API اختبار بسيط (في حالة عدم تحميل routes/api.js)
-app.get('/api/test-basic', (req, res) => {
+// اختبار أساسي
+app.get('/api/test', (req, res) => {
     res.json({
         success: true,
-        message: 'الخادم يعمل! (اختبار أساسي)',
-        database: 'PostgreSQL',
+        message: 'الخادم يعمل بنجاح!',
         timestamp: new Date().toISOString()
     });
 });
 
-// معالجة الأخطاء العامة
-app.use((err, req, res, next) => {
-    console.error('خطأ عام في الخادم:', err);
-    res.status(500).json({
-        success: false,
-        message: 'خطأ داخلي في الخادم',
-        error: err.message
+// إحصائيات وهمية
+app.get('/api/stats', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            suppliersCount: 0,
+            invoicesCount: 0,
+            ordersCount: 0,
+            totalAmount: 0
+        }
     });
 });
 
-// معالجة الأخطاء - في حالة عدم وجود الصفحة
+// موردين فارغ
+app.get('/api/suppliers-with-stats', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
+// فواتير فارغة
+app.get('/api/recent-invoices', (req, res) => {
+    res.json({
+        success: true,
+        data: []
+    });
+});
+
+// ===== الصفحات =====
+
+// الصفحة الرئيسية
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/home.html'));
+});
+
+// صفحة أوامر الشراء
+app.get('/purchase-orders', (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/purchase-orders.html'));
+});
+
+// صفحة إضافة فاتورة
+app.get('/add', (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/add.html'));
+});
+
+// صفحة عرض الفواتير
+app.get('/view', (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/view.html'));
+});
+
+// 404
 app.use((req, res) => {
     res.status(404).send(`
-        <div style="text-align: center; font-family: 'Cairo', sans-serif; padding: 50px; direction: rtl;">
-            <h1 style="color: #dc3545;">404 - الصفحة غير موجودة</h1>
-            <p style="color: #666; font-size: 18px;">الصفحة التي تبحث عنها غير متاحة.</p>
-            <a href="/" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">العودة للصفحة الرئيسية</a>
+        <div style="text-align: center; font-family: Arial; padding: 50px;">
+            <h1>404 - الصفحة غير موجودة</h1>
+            <a href="/">العودة للصفحة الرئيسية</a>
         </div>
     `);
 });
 
 // تشغيل الخادم
 app.listen(PORT, () => {
-    console.log(`🚀 خادم نظام إدارة المشتريات يعمل على المنفذ ${PORT}`);
-    console.log(`🌐 يمكنك الوصول للموقع عبر: http://localhost:${PORT}`);
-    console.log(`📱 Railway URL: متاح على Railway`);
-    console.log(`🔗 اختبار أساسي: /api/test-basic`);
+    console.log(`✅ الخادم يعمل على المنفذ ${PORT}`);
+    console.log(`🌐 الموقع متاح على Railway`);
 });
 
 module.exports = app;
