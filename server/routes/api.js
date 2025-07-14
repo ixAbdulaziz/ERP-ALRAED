@@ -1,53 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { pool } = require('../database');
-
-// إعداد multer لرفع الملفات
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const uploadDir = path.join(__dirname, '../../uploads');
-        
-        // التأكد من وجود مجلد uploads
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        // إنشاء اسم ملف فريد
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const extension = path.extname(originalName);
-        const baseName = path.basename(originalName, extension);
-        
-        cb(null, `${baseName}-${uniqueSuffix}${extension}`);
-    }
-});
-
-const fileFilter = (req, file, cb) => {
-    // السماح بملفات PDF و الصور فقط
-    const allowedTypes = /jpeg|jpg|png|pdf/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-        return cb(null, true);
-    } else {
-        cb(new Error('نوع الملف غير مدعوم. الرجاء رفع ملفات PDF أو صور فقط.'));
-    }
-};
-
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // حد أقصى 5 ميجابايت
-    },
-    fileFilter: fileFilter
-});
 
 // 🧪 API اختبار الاتصال
 router.get('/test', async (req, res) => {
@@ -214,8 +167,8 @@ router.get('/suppliers', async (req, res) => {
     }
 });
 
-// ➕ API إضافة فاتورة جديدة
-router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
+// ➕ API إضافة فاتورة جديدة (نسخة مبسطة بدون رفع ملفات)
+router.post('/invoices', express.json(), async (req, res) => {
     const client = await pool.connect();
     
     try {
@@ -231,6 +184,8 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             taxAmount,
             notes
         } = req.body;
+
+        console.log('البيانات المستلمة:', req.body);
 
         // التحقق من البيانات المطلوبة
         if (!invoiceNumber || !supplierName || !invoiceType || !category || !invoiceDate || !amountBeforeTax) {
@@ -273,13 +228,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         const taxAmountNum = parseFloat(taxAmount) || 0;
         const totalAmount = amountBeforeTaxNum + taxAmountNum;
 
-        // مسار الملف المرفوع
-        let filePath = null;
-        if (req.file) {
-            filePath = `/uploads/${req.file.filename}`;
-        }
-
-        // إدراج الفاتورة
+        // إدراج الفاتورة (بدون ملف)
         const insertQuery = `
             INSERT INTO invoices (
                 invoice_number,
@@ -290,9 +239,8 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
                 amount_before_tax,
                 tax_amount,
                 total_amount,
-                notes,
-                file_path
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                notes
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING id
         `;
         
@@ -305,8 +253,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             amountBeforeTaxNum,
             taxAmountNum,
             totalAmount,
-            notes || null,
-            filePath
+            notes || null
         ]);
 
         await client.query('COMMIT');
@@ -325,15 +272,6 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         await client.query('ROLLBACK');
         console.error('خطأ في إضافة الفاتورة:', error);
         
-        // حذف الملف المرفوع في حالة الخطأ
-        if (req.file) {
-            try {
-                fs.unlinkSync(req.file.path);
-            } catch (unlinkError) {
-                console.error('خطأ في حذف الملف:', unlinkError);
-            }
-        }
-        
         res.json({
             success: false,
             message: 'حدث خطأ أثناء حفظ الفاتورة: ' + error.message
@@ -341,175 +279,6 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
     } finally {
         client.release();
     }
-});
-
-// 📄 API جلب جميع الفواتير
-router.get('/invoices', async (req, res) => {
-    try {
-        const { supplier, type, category, limit = 50, offset = 0 } = req.query;
-        
-        let query = `
-            SELECT 
-                id,
-                invoice_number,
-                supplier_name,
-                invoice_type,
-                category,
-                invoice_date,
-                amount_before_tax,
-                tax_amount,
-                total_amount,
-                notes,
-                file_path,
-                created_at
-            FROM invoices
-            WHERE 1=1
-        `;
-        
-        const queryParams = [];
-        let paramCount = 0;
-        
-        if (supplier) {
-            paramCount++;
-            query += ` AND supplier_name ILIKE $${paramCount}`;
-            queryParams.push(`%${supplier}%`);
-        }
-        
-        if (type) {
-            paramCount++;
-            query += ` AND invoice_type ILIKE $${paramCount}`;
-            queryParams.push(`%${type}%`);
-        }
-        
-        if (category) {
-            paramCount++;
-            query += ` AND category ILIKE $${paramCount}`;
-            queryParams.push(`%${category}%`);
-        }
-        
-        query += ` ORDER BY created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-        queryParams.push(parseInt(limit), parseInt(offset));
-        
-        const result = await pool.query(query, queryParams);
-        
-        const invoices = result.rows.map(row => ({
-            id: row.id,
-            invoice_number: row.invoice_number,
-            supplier_name: row.supplier_name,
-            invoice_type: row.invoice_type,
-            category: row.category,
-            invoice_date: row.invoice_date,
-            amount_before_tax: parseFloat(row.amount_before_tax),
-            tax_amount: parseFloat(row.tax_amount),
-            total_amount: parseFloat(row.total_amount),
-            notes: row.notes,
-            file_path: row.file_path,
-            created_at: row.created_at
-        }));
-
-        res.json({
-            success: true,
-            data: invoices
-        });
-    } catch (error) {
-        console.error('خطأ في جلب الفواتير:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في جلب الفواتير',
-            data: []
-        });
-    }
-});
-
-// 🛒 API جلب أوامر الشراء
-router.get('/purchase-orders', async (req, res) => {
-    try {
-        const query = `
-            SELECT 
-                id,
-                supplier_name,
-                description,
-                amount,
-                created_at
-            FROM purchase_orders
-            ORDER BY created_at DESC
-        `;
-        
-        const result = await pool.query(query);
-        
-        const orders = result.rows.map(row => ({
-            id: row.id,
-            supplier_name: row.supplier_name,
-            description: row.description,
-            amount: parseFloat(row.amount),
-            created_at: row.created_at
-        }));
-
-        res.json({
-            success: true,
-            data: orders
-        });
-    } catch (error) {
-        console.error('خطأ في جلب أوامر الشراء:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في جلب أوامر الشراء',
-            data: []
-        });
-    }
-});
-
-// ➕ API إضافة أمر شراء جديد
-router.post('/purchase-orders', async (req, res) => {
-    try {
-        const { supplierName, description, amount } = req.body;
-        
-        if (!supplierName || !description || !amount) {
-            return res.json({
-                success: false,
-                message: 'جميع الحقول مطلوبة'
-            });
-        }
-        
-        const query = `
-            INSERT INTO purchase_orders (supplier_name, description, amount)
-            VALUES ($1, $2, $3)
-            RETURNING id
-        `;
-        
-        const result = await pool.query(query, [supplierName, description, parseFloat(amount)]);
-        
-        res.json({
-            success: true,
-            message: 'تم إضافة أمر الشراء بنجاح',
-            data: { id: result.rows[0].id }
-        });
-    } catch (error) {
-        console.error('خطأ في إضافة أمر الشراء:', error);
-        res.json({
-            success: false,
-            message: 'حدث خطأ أثناء إضافة أمر الشراء'
-        });
-    }
-});
-
-// معالجة الأخطاء العامة
-router.use((error, req, res, next) => {
-    console.error('خطأ في API:', error);
-    
-    if (error instanceof multer.MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.json({
-                success: false,
-                message: 'حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت'
-            });
-        }
-    }
-    
-    res.json({
-        success: false,
-        message: 'حدث خطأ في الخادم'
-    });
 });
 
 module.exports = router;
