@@ -7,7 +7,11 @@ const {
     getRecentInvoices,
     getSuppliersWithStats,
     getAllPurchaseOrders,
-    db
+    addSupplier,
+    addInvoice,
+    addPurchaseOrder,
+    deleteInvoice,
+    deletePurchaseOrder
 } = require('../database');
 
 // ===== APIs للحصول على البيانات =====
@@ -129,157 +133,150 @@ router.get('/suppliers', async (req, res) => {
 // ===== APIs لإضافة البيانات =====
 
 // إضافة مورد جديد
-router.post('/suppliers', (req, res) => {
-    const { name } = req.body;
-    
-    if (!name || name.trim() === '') {
-        return res.status(400).json({
-            success: false,
-            message: 'اسم المورد مطلوب'
-        });
-    }
-    
-    const stmt = db.prepare("INSERT INTO suppliers (name) VALUES (?)");
-    stmt.run(name.trim(), function(err) {
-        if (err) {
-            console.error('❌ خطأ في إضافة مورد:', err);
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'اسم المورد موجود مسبقاً'
-                });
-            }
-            return res.status(500).json({
+router.post('/suppliers', async (req, res) => {
+    try {
+        const { name } = req.body;
+        
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
                 success: false,
-                message: 'خطأ في إضافة المورد',
-                error: err.message
+                message: 'اسم المورد مطلوب'
             });
         }
         
+        const supplier = await addSupplier(name.trim());
         console.log('✅ تم إضافة مورد جديد:', name);
+        
         res.json({
             success: true,
             message: 'تم إضافة المورد بنجاح',
-            data: { id: this.lastID, name: name.trim() }
+            data: supplier
         });
-    });
-    stmt.finalize();
+    } catch (error) {
+        console.error('❌ خطأ في إضافة مورد:', error);
+        
+        if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+            return res.status(400).json({
+                success: false,
+                message: 'اسم المورد موجود مسبقاً'
+            });
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في إضافة المورد',
+            error: error.message
+        });
+    }
 });
 
 // إضافة فاتورة جديدة
-router.post('/invoices', (req, res) => {
-    const {
-        invoice_number,
-        supplier_name,
-        invoice_type,
-        category,
-        invoice_date,
-        amount_before_tax,
-        tax_amount,
-        total_amount,
-        notes,
-        file_path
-    } = req.body;
-    
-    // التحقق من البيانات المطلوبة
-    if (!invoice_number || !supplier_name || !invoice_type || !category || !invoice_date || !amount_before_tax || !total_amount) {
-        return res.status(400).json({
-            success: false,
-            message: 'جميع البيانات الأساسية مطلوبة'
-        });
-    }
-    
-    const stmt = db.prepare(`INSERT INTO invoices 
-        (invoice_number, supplier_name, invoice_type, category, invoice_date, amount_before_tax, tax_amount, total_amount, notes, file_path) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    
-    stmt.run([
-        invoice_number,
-        supplier_name,
-        invoice_type,
-        category,
-        invoice_date,
-        parseFloat(amount_before_tax),
-        parseFloat(tax_amount) || 0,
-        parseFloat(total_amount),
-        notes || '',
-        file_path || ''
-    ], function(err) {
-        if (err) {
-            console.error('❌ خطأ في إضافة فاتورة:', err);
-            if (err.message.includes('UNIQUE constraint failed')) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'رقم الفاتورة موجود مسبقاً'
-                });
-            }
-            return res.status(500).json({
+router.post('/invoices', async (req, res) => {
+    try {
+        const {
+            invoice_number,
+            supplier_name,
+            invoice_type,
+            category,
+            invoice_date,
+            amount_before_tax,
+            tax_amount,
+            total_amount,
+            notes,
+            file_path
+        } = req.body;
+        
+        // التحقق من البيانات المطلوبة
+        if (!invoice_number || !supplier_name || !invoice_type || !category || !invoice_date || !amount_before_tax || !total_amount) {
+            return res.status(400).json({
                 success: false,
-                message: 'خطأ في إضافة الفاتورة',
-                error: err.message
+                message: 'جميع البيانات الأساسية مطلوبة'
             });
         }
         
+        const invoice = await addInvoice({
+            invoice_number,
+            supplier_name,
+            invoice_type,
+            category,
+            invoice_date,
+            amount_before_tax: parseFloat(amount_before_tax),
+            tax_amount: parseFloat(tax_amount) || 0,
+            total_amount: parseFloat(total_amount),
+            notes,
+            file_path
+        });
+        
         console.log('✅ تم إضافة فاتورة جديدة:', invoice_number);
+        
         res.json({
             success: true,
             message: 'تم إضافة الفاتورة بنجاح',
-            data: { id: this.lastID, invoice_number }
+            data: invoice
         });
-    });
-    stmt.finalize();
-});
-
-// إضافة أمر شراء جديد
-router.post('/purchase-orders', (req, res) => {
-    const { supplier_name, description, amount } = req.body;
-    
-    if (!supplier_name || !description || !amount) {
-        return res.status(400).json({
-            success: false,
-            message: 'جميع البيانات مطلوبة'
-        });
-    }
-    
-    const stmt = db.prepare("INSERT INTO purchase_orders (supplier_name, description, amount) VALUES (?, ?, ?)");
-    stmt.run([supplier_name, description, parseFloat(amount)], function(err) {
-        if (err) {
-            console.error('❌ خطأ في إضافة أمر شراء:', err);
-            return res.status(500).json({
+    } catch (error) {
+        console.error('❌ خطأ في إضافة فاتورة:', error);
+        
+        if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+            return res.status(400).json({
                 success: false,
-                message: 'خطأ في إضافة أمر الشراء',
-                error: err.message
+                message: 'رقم الفاتورة موجود مسبقاً'
             });
         }
         
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في إضافة الفاتورة',
+            error: error.message
+        });
+    }
+});
+
+// إضافة أمر شراء جديد
+router.post('/purchase-orders', async (req, res) => {
+    try {
+        const { supplier_name, description, amount } = req.body;
+        
+        if (!supplier_name || !description || !amount) {
+            return res.status(400).json({
+                success: false,
+                message: 'جميع البيانات مطلوبة'
+            });
+        }
+        
+        const order = await addPurchaseOrder({
+            supplier_name,
+            description,
+            amount: parseFloat(amount)
+        });
+        
         console.log('✅ تم إضافة أمر شراء جديد');
+        
         res.json({
             success: true,
             message: 'تم إضافة أمر الشراء بنجاح',
-            data: { id: this.lastID }
+            data: order
         });
-    });
-    stmt.finalize();
+    } catch (error) {
+        console.error('❌ خطأ في إضافة أمر شراء:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في إضافة أمر الشراء',
+            error: error.message
+        });
+    }
 });
 
 // ===== APIs للحذف والتعديل =====
 
 // حذف فاتورة
-router.delete('/invoices/:id', (req, res) => {
-    const { id } = req.params;
-    
-    const stmt = db.prepare("DELETE FROM invoices WHERE id = ?");
-    stmt.run(id, function(err) {
-        if (err) {
-            console.error('❌ خطأ في حذف فاتورة:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'خطأ في حذف الفاتورة',
-                error: err.message
-            });
-        }
+router.delete('/invoices/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
         
-        if (this.changes === 0) {
+        const deleted = await deleteInvoice(id);
+        
+        if (!deleted) {
             return res.status(404).json({
                 success: false,
                 message: 'الفاتورة غير موجودة'
@@ -291,26 +288,24 @@ router.delete('/invoices/:id', (req, res) => {
             success: true,
             message: 'تم حذف الفاتورة بنجاح'
         });
-    });
-    stmt.finalize();
+    } catch (error) {
+        console.error('❌ خطأ في حذف فاتورة:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في حذف الفاتورة',
+            error: error.message
+        });
+    }
 });
 
 // حذف أمر شراء
-router.delete('/purchase-orders/:id', (req, res) => {
-    const { id } = req.params;
-    
-    const stmt = db.prepare("DELETE FROM purchase_orders WHERE id = ?");
-    stmt.run(id, function(err) {
-        if (err) {
-            console.error('❌ خطأ في حذف أمر شراء:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'خطأ في حذف أمر الشراء',
-                error: err.message
-            });
-        }
+router.delete('/purchase-orders/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
         
-        if (this.changes === 0) {
+        const deleted = await deletePurchaseOrder(id);
+        
+        if (!deleted) {
             return res.status(404).json({
                 success: false,
                 message: 'أمر الشراء غير موجود'
@@ -322,15 +317,22 @@ router.delete('/purchase-orders/:id', (req, res) => {
             success: true,
             message: 'تم حذف أمر الشراء بنجاح'
         });
-    });
-    stmt.finalize();
+    } catch (error) {
+        console.error('❌ خطأ في حذف أمر شراء:', error);
+        res.status(500).json({
+            success: false,
+            message: 'خطأ في حذف أمر الشراء',
+            error: error.message
+        });
+    }
 });
 
 // اختبار الاتصال
 router.get('/test', (req, res) => {
     res.json({
         success: true,
-        message: 'APIs تعمل بنجاح!',
+        message: 'APIs تعمل بنجاح مع PostgreSQL!',
+        database: 'PostgreSQL',
         timestamp: new Date().toISOString(),
         endpoints: [
             'GET /api/stats - إحصائيات النظام',
