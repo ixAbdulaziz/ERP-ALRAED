@@ -66,29 +66,6 @@
             padding-bottom: 10px;
         }
 
-        /* Pinned Supplier Styles */
-        .pinned-supplier {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(40, 167, 69, 0.4);
-            position: sticky;
-            top: 20px;
-            z-index: 100;
-        }
-
-        .pinned-supplier h3 {
-            margin: 0 0 15px 0;
-            font-weight: 700;
-        }
-
-        .pinned-supplier .btn {
-            margin: 0 5px;
-        }
-
         .suppliers-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -117,49 +94,16 @@
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
         }
 
-        .supplier-card.pinned {
-            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
         .supplier-actions {
             position: absolute;
             top: 10px;
-            left: 10px;
+            right: 10px;
         }
 
         .supplier-actions .btn {
             padding: 5px 8px;
             font-size: 0.75rem;
-            margin-left: 3px;
-        }
-
-        .pin-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            border-radius: 50%;
-            width: 35px;
-            height: 35px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        .pin-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-            transform: scale(1.1);
-        }
-
-        .pin-btn.pinned {
-            background: #ffc107;
-            color: #000;
-            border-color: #ffc107;
+            margin-right: 3px;
         }
 
         .invoices-section {
@@ -310,22 +254,6 @@
             margin-bottom: 20px;
         }
 
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .summary-row:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -409,6 +337,14 @@
             color: #667eea !important;
         }
 
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+        }
+
         @media (max-width: 768px) {
             .main-container {
                 padding: 15px;
@@ -426,11 +362,6 @@
             .action-btn {
                 padding: 4px 6px;
                 font-size: 0.7rem;
-            }
-            
-            .pinned-supplier {
-                position: relative;
-                margin-bottom: 20px;
             }
         }
     </style>
@@ -472,27 +403,8 @@
             <p>إدارة شاملة للموردين وفواتيرهم والمستحقات مع إمكانيات متقدمة للبحث والتصفية</p>
         </div>
 
-        <!-- Pinned Supplier (Hidden by default) -->
-        <div class="pinned-supplier fade-in" id="pinnedSupplier" style="display: none;">
-            <h3 id="pinnedSupplierName">المورد المثبت</h3>
-            <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
-                <div><strong>إجمالي الفواتير:</strong> <span id="pinnedTotalInvoices">0</span></div>
-                <div><strong>إجمالي المبلغ:</strong> <span id="pinnedTotalAmount">0 ريال</span></div>
-                <div><strong>المدفوع:</strong> <span id="pinnedTotalPaid">0 ريال</span></div>
-                <div><strong>المتبقي:</strong> <span id="pinnedTotalRemaining">0 ريال</span></div>
-            </div>
-            <div class="mt-3">
-                <button class="btn btn-light btn-sm" onclick="editSupplierName()">
-                    <i class="fas fa-edit"></i> تعديل الاسم
-                </button>
-                <button class="btn btn-light btn-sm" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel"></i> تصدير Excel
-                </button>
-                <button class="btn btn-warning btn-sm" onclick="unpinSupplier()">
-                    <i class="fas fa-times"></i> إلغاء التثبيت
-                </button>
-            </div>
-        </div>
+        <!-- Alert Container -->
+        <div class="alert-container" id="alertContainer"></div>
 
         <!-- Suppliers Section -->
         <div class="section-card fade-in">
@@ -532,7 +444,7 @@
             </div>
         </div>
 
-        <!-- Selected Supplier Info (Only when supplier is selected but not pinned) -->
+        <!-- Selected Supplier Info -->
         <div class="section-card fade-in" id="selectedSupplierInfo" style="display: none;">
             <div class="section-title">
                 <i class="fas fa-user-tie"></i>
@@ -837,13 +749,11 @@
         // Global variables
         let suppliers = [];
         let selectedSupplier = null;
-        let pinnedSupplier = null;
         let currentSupplierInvoices = [];
         let currentSupplierPayments = [];
         let filteredInvoices = [];
         let sortColumn = null;
         let sortDirection = 'asc';
-        let pinnedSuppliers = []; // Store pinned suppliers names
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
@@ -855,12 +765,6 @@
             
             // Setup calculation for edit form
             setupEditFormCalculations();
-            
-            // Load pinned suppliers from localStorage
-            const saved = localStorage.getItem('pinnedSuppliers');
-            if (saved) {
-                pinnedSuppliers = JSON.parse(saved);
-            }
         });
 
         // Setup edit form calculations
@@ -877,6 +781,31 @@
             
             amountInput.addEventListener('input', calculateTotal);
             taxInput.addEventListener('input', calculateTotal);
+        }
+
+        // Show alert function
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertId = 'alert_' + Date.now();
+            
+            const alertElement = document.createElement('div');
+            alertElement.id = alertId;
+            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
+            alertElement.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            alertContainer.appendChild(alertElement);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                const element = document.getElementById(alertId);
+                if (element) {
+                    element.remove();
+                }
+            }, 5000);
         }
 
         // Load all suppliers from API
@@ -897,6 +826,7 @@
                 }
             } catch (error) {
                 console.error('خطأ في الاتصال:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
                 suppliers = [];
                 renderSuppliersGrid();
             }
@@ -905,16 +835,6 @@
         // Update suppliers count
         function updateSuppliersCount() {
             document.getElementById('suppliersCount').textContent = suppliers.length + ' موردين';
-        }
-
-        // Check if supplier is pinned
-        function isSupplierPinned(supplierName) {
-            return pinnedSuppliers.includes(supplierName);
-        }
-
-        // Save pinned suppliers to localStorage
-        function savePinnedSuppliers() {
-            localStorage.setItem('pinnedSuppliers', JSON.stringify(pinnedSuppliers));
         }
 
         // Render suppliers grid
@@ -929,116 +849,26 @@
             }
 
             emptyState.style.display = 'none';
-
-            // Separate pinned and unpinned suppliers
-            const pinned = suppliers.filter(supplier => isSupplierPinned(supplier.name));
-            const unpinned = suppliers.filter(supplier => !isSupplierPinned(supplier.name));
-
+            
             let html = '';
-
-            // Add pinned section if there are pinned suppliers
-            if (pinned.length > 0) {
+            suppliers.forEach(supplier => {
+                const isActive = selectedSupplier && selectedSupplier.name === supplier.name;
+                
                 html += `
-                    <div class="col-12 mb-3">
-                        <h6 class="text-primary fw-bold">
-                            <i class="fas fa-thumbtack me-2"></i>الموردين المثبتين
-                        </h6>
+                    <div class="supplier-card ${isActive ? 'active' : ''}" onclick="selectSupplier('${supplier.name}')">
+                        <div class="supplier-actions">
+                            <button class="btn btn-outline-light btn-sm" onclick="editSupplierName('${supplier.name}', event)" title="تحرير">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                        <h5 class="fw-bold mb-2">${supplier.name}</h5>
+                        <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> الفواتير: ${supplier.invoice_count || 0}</p>
+                        <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ: ${(supplier.total_amount || 0).toLocaleString()} ريال</p>
                     </div>
                 `;
-                
-                pinned.forEach(supplier => {
-                    html += createSupplierCard(supplier, true);
-                });
-
-                if (unpinned.length > 0) {
-                    html += `
-                        <div class="col-12 mb-3 mt-4">
-                            <h6 class="text-primary fw-bold">
-                                <i class="fas fa-users me-2"></i>باقي الموردين
-                            </h6>
-                        </div>
-                    `;
-                }
-            }
-
-            // Add unpinned suppliers
-            unpinned.forEach(supplier => {
-                html += createSupplierCard(supplier, false);
             });
             
             grid.innerHTML = html;
-        }
-
-        // Create supplier card HTML
-        function createSupplierCard(supplier, isPinned) {
-            const isActive = selectedSupplier && selectedSupplier.name === supplier.name;
-            
-            return `
-                <div class="supplier-card ${isActive ? 'active' : ''} ${isPinned ? 'pinned' : ''}" onclick="selectSupplier('${supplier.name}')">
-                    <button class="pin-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinSupplier('${supplier.name}', event)" title="${isPinned ? 'إلغاء التثبيت' : 'تثبيت المورد'}">
-                        <i class="fas fa-thumbtack"></i>
-                    </button>
-                    <div class="supplier-actions">
-                        <button class="btn btn-outline-light btn-sm" onclick="editSupplierName('${supplier.name}', event)" title="تحرير">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </div>
-                    <h5 class="fw-bold mb-2">${supplier.name}</h5>
-                    <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> الفواتير: ${supplier.invoice_count || 0}</p>
-                    <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ: ${(supplier.total_amount || 0).toLocaleString()} ريال</p>
-                </div>
-            `;
-        }
-
-        // Toggle pin supplier
-        function togglePinSupplier(supplierName, event) {
-            event.stopPropagation();
-            
-            const index = pinnedSuppliers.indexOf(supplierName);
-            if (index > -1) {
-                // Unpin supplier
-                pinnedSuppliers.splice(index, 1);
-                if (pinnedSupplier && pinnedSupplier.name === supplierName) {
-                    unpinSupplier();
-                }
-            } else {
-                // Pin supplier
-                pinnedSuppliers.push(supplierName);
-                const supplier = suppliers.find(s => s.name === supplierName);
-                if (supplier) {
-                    pinSupplier(supplier);
-                }
-            }
-            
-            savePinnedSuppliers();
-            renderSuppliersGrid();
-        }
-
-        // Pin supplier in header
-        function pinSupplier(supplier) {
-            pinnedSupplier = supplier;
-            
-            // Update pinned supplier display
-            document.getElementById('pinnedSupplier').style.display = 'block';
-            document.getElementById('pinnedSupplierName').textContent = supplier.name;
-            
-            // Hide selected supplier info if showing
-            document.getElementById('selectedSupplierInfo').style.display = 'none';
-            
-            console.log('📌 تم تثبيت المورد:', supplier.name);
-        }
-
-        // Unpin supplier from header
-        function unpinSupplier() {
-            pinnedSupplier = null;
-            document.getElementById('pinnedSupplier').style.display = 'none';
-            
-            // Show selected supplier info if there's a selected supplier
-            if (selectedSupplier) {
-                document.getElementById('selectedSupplierInfo').style.display = 'block';
-            }
-            
-            console.log('📌 تم إلغاء تثبيت المورد');
         }
 
         // Select supplier
@@ -1052,12 +882,8 @@
             
             // Load supplier data
             await loadSupplierInvoices(supplierName);
+            await loadSupplierPayments(supplierName);
             updateSupplierSummary();
-            
-            // Auto-pin if this supplier is in pinned list
-            if (isSupplierPinned(supplierName)) {
-                pinSupplier(selectedSupplier);
-            }
         }
 
         // Show selected supplier info
@@ -1068,14 +894,7 @@
             
             if (selectedSupplier) {
                 supplierNameSpan.textContent = selectedSupplier.name;
-                
-                // Show info section only if supplier is not pinned
-                if (!pinnedSupplier || pinnedSupplier.name !== selectedSupplier.name) {
-                    infoSection.style.display = 'block';
-                } else {
-                    infoSection.style.display = 'none';
-                }
-                
+                infoSection.style.display = 'block';
                 invoicesSection.classList.add('active');
             } else {
                 infoSection.style.display = 'none';
@@ -1083,30 +902,88 @@
             }
         }
 
-        // Load supplier invoices by name
+        // Load supplier invoices by name - FIXED
         async function loadSupplierInvoices(supplierName) {
             try {
-                const response = await fetch(`/api/invoices`);
+                const response = await fetch(`/api/invoices?supplier_name=${encodeURIComponent(supplierName)}`);
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Filter invoices by supplier name
-                    currentSupplierInvoices = result.data.filter(invoice => 
-                        invoice.supplier_name === supplierName
-                    );
+                    currentSupplierInvoices = result.data || [];
                     filteredInvoices = [...currentSupplierInvoices];
                     renderInvoicesTable();
+                    console.log(`📋 تم تحميل ${currentSupplierInvoices.length} فاتورة للمورد: ${supplierName}`);
                 } else {
+                    console.error('خطأ في تحميل فواتير المورد:', result.message);
                     currentSupplierInvoices = [];
                     filteredInvoices = [];
                     renderInvoicesTable();
                 }
             } catch (error) {
                 console.error('خطأ في تحميل فواتير المورد:', error);
+                showAlert('خطأ في تحميل فواتير المورد', 'danger');
                 currentSupplierInvoices = [];
                 filteredInvoices = [];
                 renderInvoicesTable();
             }
+        }
+
+        // Load supplier payments - NEW
+        async function loadSupplierPayments(supplierName) {
+            try {
+                const response = await fetch(`/api/payments/${encodeURIComponent(supplierName)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentSupplierPayments = result.data || [];
+                    renderPaymentsTable();
+                    console.log(`💰 تم تحميل ${currentSupplierPayments.length} دفعة للمورد: ${supplierName}`);
+                } else {
+                    console.error('خطأ في تحميل مدفوعات المورد:', result.message);
+                    currentSupplierPayments = [];
+                    renderPaymentsTable();
+                }
+            } catch (error) {
+                console.error('خطأ في تحميل المدفوعات:', error);
+                currentSupplierPayments = [];
+                renderPaymentsTable();
+            }
+        }
+
+        // Render payments table - NEW
+        function renderPaymentsTable() {
+            const tbody = document.getElementById('paymentsTableBody');
+            const emptyState = document.getElementById('paymentsEmptyState');
+            
+            if (currentSupplierPayments.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            tbody.innerHTML = currentSupplierPayments.map(payment => {
+                const formattedDate = new Date(payment.payment_date).toLocaleDateString('ar-SA');
+                
+                return `
+                    <tr>
+                        <td>${formattedDate}</td>
+                        <td class="amount-cell fw-bold text-success">${payment.amount.toLocaleString()} ريال</td>
+                        <td class="text-end">
+                            ${payment.notes ? 
+                                `<span class="notes-cell" title="${payment.notes}">${payment.notes.length > 30 ? payment.notes.substring(0, 30) + '...' : payment.notes}</span>` : 
+                                '<span class="text-muted">لا توجد ملاحظات</span>'
+                            }
+                        </td>
+                        <td>
+                            <button class="btn btn-outline-danger btn-sm action-btn" onclick="deletePayment(${payment.id})" title="حذف">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // Filter suppliers
@@ -1126,7 +1003,20 @@
             let html = '';
 
             filtered.forEach(supplier => {
-                html += createSupplierCard(supplier, isSupplierPinned(supplier.name));
+                const isActive = selectedSupplier && selectedSupplier.name === supplier.name;
+                
+                html += `
+                    <div class="supplier-card ${isActive ? 'active' : ''}" onclick="selectSupplier('${supplier.name}')">
+                        <div class="supplier-actions">
+                            <button class="btn btn-outline-light btn-sm" onclick="editSupplierName('${supplier.name}', event)" title="تحرير">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                        <h5 class="fw-bold mb-2">${supplier.name}</h5>
+                        <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> الفواتير: ${supplier.invoice_count || 0}</p>
+                        <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ: ${(supplier.total_amount || 0).toLocaleString()} ريال</p>
+                    </div>
+                `;
             });
 
             grid.innerHTML = html;
@@ -1252,26 +1142,18 @@
             return `<span class="notes-cell">${notes}</span>`;
         }
 
-        // Update supplier summary
+        // Update supplier summary - FIXED to use real payments data
         function updateSupplierSummary() {
             const totalInvoices = currentSupplierInvoices.length;
             const totalAmount = currentSupplierInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0);
-            const totalPaid = 0; // Will be implemented with payments API
+            const totalPaid = currentSupplierPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
             const totalRemaining = totalAmount - totalPaid;
             
-            // Update regular summary
+            // Update summary
             document.getElementById('totalInvoices').textContent = totalInvoices;
             document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' ريال';
             document.getElementById('totalPaid').textContent = totalPaid.toLocaleString() + ' ريال';
             document.getElementById('totalRemaining').textContent = totalRemaining.toLocaleString() + ' ريال';
-            
-            // Update pinned summary if applicable
-            if (pinnedSupplier && selectedSupplier && pinnedSupplier.name === selectedSupplier.name) {
-                document.getElementById('pinnedTotalInvoices').textContent = totalInvoices;
-                document.getElementById('pinnedTotalAmount').textContent = totalAmount.toLocaleString() + ' ريال';
-                document.getElementById('pinnedTotalPaid').textContent = totalPaid.toLocaleString() + ' ريال';
-                document.getElementById('pinnedTotalRemaining').textContent = totalRemaining.toLocaleString() + ' ريال';
-            }
         }
 
         // Edit invoice
@@ -1294,7 +1176,7 @@
             new bootstrap.Modal(document.getElementById('editInvoiceModal')).show();
         }
 
-        // Save invoice changes
+        // Save invoice changes - FIXED
         async function saveInvoiceChanges() {
             const invoiceId = document.getElementById('editInvoiceId').value;
             const formData = new FormData();
@@ -1314,6 +1196,11 @@
             }
             
             try {
+                const saveBtn = document.querySelector('#editInvoiceModal .btn-primary');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'جاري الحفظ...';
+                saveBtn.disabled = true;
+                
                 const response = await fetch(`/api/invoices/${invoiceId}`, {
                     method: 'PUT',
                     body: formData
@@ -1322,16 +1209,25 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('تم تحديث الفاتورة بنجاح!');
+                    showAlert('تم تحديث الفاتورة بنجاح!', 'success');
                     bootstrap.Modal.getInstance(document.getElementById('editInvoiceModal')).hide();
-                    loadSupplierInvoices(selectedSupplier.name);
-                    loadSuppliers(); // Update supplier stats
+                    
+                    await Promise.all([
+                        loadSupplierInvoices(selectedSupplier.name),
+                        loadSuppliers()
+                    ]);
+                    
+                    updateSupplierSummary();
                 } else {
-                    alert('خطأ: ' + result.message);
+                    showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
                 console.error('خطأ في تحديث الفاتورة:', error);
-                alert('حدث خطأ في الاتصال بالخادم');
+                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
+            } finally {
+                const saveBtn = document.querySelector('#editInvoiceModal .btn-primary');
+                saveBtn.textContent = 'حفظ التغييرات';
+                saveBtn.disabled = false;
             }
         }
 
@@ -1354,12 +1250,17 @@
             new bootstrap.Modal(document.getElementById('deleteInvoiceModal')).show();
         }
 
-        // Confirm delete invoice
+        // Confirm delete invoice - FIXED
         async function confirmDeleteInvoice() {
             const modal = document.getElementById('deleteInvoiceModal');
             const invoiceId = modal.getAttribute('data-invoice-id');
             
             try {
+                const deleteBtn = document.querySelector('#deleteInvoiceModal .btn-danger');
+                const originalText = deleteBtn.textContent;
+                deleteBtn.textContent = 'جاري الحذف...';
+                deleteBtn.disabled = true;
+                
                 const response = await fetch(`/api/invoices/${invoiceId}`, {
                     method: 'DELETE'
                 });
@@ -1367,46 +1268,69 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('تم حذف الفاتورة بنجاح!');
+                    showAlert('تم حذف الفاتورة بنجاح!', 'success');
                     bootstrap.Modal.getInstance(modal).hide();
-                    loadSupplierInvoices(selectedSupplier.name);
-                    loadSuppliers(); // Update supplier stats
+                    
+                    await Promise.all([
+                        loadSupplierInvoices(selectedSupplier.name),
+                        loadSuppliers()
+                    ]);
+                    
+                    updateSupplierSummary();
                 } else {
-                    alert('خطأ: ' + result.message);
+                    showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
                 console.error('خطأ في حذف الفاتورة:', error);
-                alert('حدث خطأ في الاتصال بالخادم');
+                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
+            } finally {
+                const deleteBtn = document.querySelector('#deleteInvoiceModal .btn-danger');
+                deleteBtn.textContent = 'حذف الفاتورة';
+                deleteBtn.disabled = false;
             }
         }
 
-        // View file
+        // View file - FIXED file paths
         function viewFile(filePath) {
             const modal = new bootstrap.Modal(document.getElementById('viewFileModal'));
             const container = document.getElementById('filePreviewContainer');
             const downloadBtn = document.getElementById('downloadFileBtn');
             
-            // Set download link
-            downloadBtn.onclick = () => window.open(`/uploads/${filePath}`, '_blank');
+            // Fix file path
+            const fullPath = filePath.startsWith('/uploads/') ? filePath : `/uploads/${filePath}`;
             
-            // Show file preview
+            downloadBtn.onclick = () => window.open(fullPath, '_blank');
+            
             const fileExtension = filePath.split('.').pop().toLowerCase();
             
             if (fileExtension === 'pdf') {
                 container.innerHTML = `
-                    <embed src="/uploads/${filePath}" type="application/pdf" width="100%" height="500px">
-                    <p class="mt-2">إذا لم يظهر الملف، <a href="/uploads/${filePath}" target="_blank">انقر هنا لفتحه</a></p>
+                    <div class="text-center">
+                        <embed src="${fullPath}" type="application/pdf" width="100%" height="500px" style="border-radius: 10px;">
+                        <p class="mt-3">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            إذا لم يظهر الملف، <a href="${fullPath}" target="_blank" class="text-primary">انقر هنا لفتحه في نافذة جديدة</a>
+                        </p>
+                    </div>
                 `;
-            } else if (['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
                 container.innerHTML = `
-                    <img src="/uploads/${filePath}" class="file-preview" alt="مرفق الفاتورة">
+                    <div class="text-center">
+                        <img src="${fullPath}" class="file-preview img-fluid" alt="مرفق الفاتورة" style="max-height: 500px; border-radius: 10px;">
+                    </div>
                 `;
             } else {
                 container.innerHTML = `
-                    <div class="text-center">
-                        <i class="fas fa-file fa-3x text-muted mb-3"></i>
-                        <p>لا يمكن معاينة هذا النوع من الملفات</p>
-                        <p>انقر على تحميل لحفظ الملف</p>
+                    <div class="text-center py-5">
+                        <i class="fas fa-file fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted">لا يمكن معاينة هذا النوع من الملفات</h5>
+                        <p class="text-muted">انقر على زر "تحميل" لحفظ الملف على جهازك</p>
+                        <div class="mt-3">
+                            <small class="text-info">
+                                <i class="fas fa-file me-1"></i>
+                                نوع الملف: ${fileExtension.toUpperCase()}
+                            </small>
+                        </div>
                     </div>
                 `;
             }
@@ -1416,9 +1340,8 @@
 
         // Export to Excel
         function exportToExcel() {
-            const supplier = selectedSupplier || pinnedSupplier;
-            if (!supplier || currentSupplierInvoices.length === 0) {
-                alert('لا توجد بيانات للتصدير');
+            if (!selectedSupplier || currentSupplierInvoices.length === 0) {
+                showAlert('لا توجد بيانات للتصدير', 'warning');
                 return;
             }
             
@@ -1442,11 +1365,13 @@
             XLSX.utils.book_append_sheet(wb, wsInvoices, 'الفواتير');
             
             // Save file
-            const fileName = `فواتير_${supplier.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const fileName = `فواتير_${selectedSupplier.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
             XLSX.writeFile(wb, fileName);
+            
+            showAlert('تم تصدير البيانات بنجاح!', 'success');
         }
 
-        // Edit supplier name
+        // Edit supplier name - FIXED to work with API
         function editSupplierName(supplierName, event) {
             if (event) event.stopPropagation();
             
@@ -1457,30 +1382,70 @@
             }
         }
 
-        // Update supplier name (placeholder - needs API)
+        // Update supplier name - FIXED
         async function updateSupplierName(oldName, newName) {
             try {
-                // This would need an API call to update supplier name
-                alert('سيتم تطوير تحديث اسم المورد مع APIs في الخطوة التالية');
-                console.log('تحديث اسم المورد من:', oldName, 'إلى:', newName);
+                const supplier = suppliers.find(s => s.name === oldName);
+                if (!supplier) {
+                    showAlert('المورد غير موجود', 'danger');
+                    return;
+                }
+                
+                const response = await fetch(`/api/suppliers/${supplier.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: newName })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('تم تحديث اسم المورد بنجاح!', 'success');
+                    
+                    await loadSuppliers();
+                    
+                    if (selectedSupplier && selectedSupplier.name === oldName) {
+                        selectedSupplier.name = newName;
+                        await loadSupplierInvoices(newName);
+                        await loadSupplierPayments(newName);
+                        updateSupplierSummary();
+                    }
+                } else {
+                    showAlert('خطأ: ' + result.message, 'danger');
+                }
             } catch (error) {
                 console.error('خطأ في تحديث اسم المورد:', error);
-                alert('حدث خطأ في الاتصال بالخادم');
+                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
             }
         }
 
-        // Save payment (placeholder)
+        // Save payment - FIXED
         async function savePayment() {
-            if (!selectedSupplier) return;
+            if (!selectedSupplier) {
+                showAlert('لم يتم تحديد مورد', 'danger');
+                return;
+            }
             
             const paymentData = {
-                supplier_id: selectedSupplier.id,
+                supplier_name: selectedSupplier.name,
                 payment_date: document.getElementById('paymentDate').value,
-                amount: document.getElementById('paymentAmount').value,
+                amount: parseFloat(document.getElementById('paymentAmount').value),
                 notes: document.getElementById('paymentNotes').value
             };
             
+            if (!paymentData.payment_date || !paymentData.amount || paymentData.amount <= 0) {
+                showAlert('يرجى ملء جميع الحقول المطلوبة بشكل صحيح', 'warning');
+                return;
+            }
+            
             try {
+                const saveBtn = document.querySelector('#addPaymentModal .btn-success');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'جاري الحفظ...';
+                saveBtn.disabled = true;
+                
                 const response = await fetch('/api/payments', {
                     method: 'POST',
                     headers: {
@@ -1492,28 +1457,70 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('تم حفظ الدفعة بنجاح!');
+                    showAlert(`تم حفظ دفعة بقيمة ${paymentData.amount.toLocaleString()} ريال بنجاح!`, 'success');
+                    
                     document.getElementById('addPaymentForm').reset();
                     document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
+                    
                     bootstrap.Modal.getInstance(document.getElementById('addPaymentModal')).hide();
-                    // loadSupplierPayments(selectedSupplier.id); // When implemented
-                    loadSuppliers(); // Update supplier stats
+                    
+                    await Promise.all([
+                        loadSuppliers(),
+                        loadSupplierPayments(selectedSupplier.name)
+                    ]);
+                    
+                    updateSupplierSummary();
                 } else {
-                    alert('خطأ: ' + result.message);
+                    showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
                 console.error('خطأ في حفظ الدفعة:', error);
-                alert('حدث خطأ في الاتصال بالخادم');
+                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
+            } finally {
+                const saveBtn = document.querySelector('#addPaymentModal .btn-success');
+                saveBtn.textContent = 'حفظ الدفعة';
+                saveBtn.disabled = false;
+            }
+        }
+
+        // Delete payment - NEW
+        async function deletePayment(paymentId) {
+            if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/payments/${paymentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert('تم حذف الدفعة بنجاح!', 'success');
+                    
+                    if (selectedSupplier) {
+                        await Promise.all([
+                            loadSuppliers(),
+                            loadSupplierPayments(selectedSupplier.name)
+                        ]);
+                        updateSupplierSummary();
+                    }
+                } else {
+                    showAlert('خطأ: ' + result.message, 'danger');
+                }
+            } catch (error) {
+                console.error('خطأ في حذف الدفعة:', error);
+                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
             }
         }
 
         // Add invoice to supplier (redirect to add page)
         function addInvoiceToSupplier() {
-            const supplier = selectedSupplier || pinnedSupplier;
-            if (!supplier) return;
+            if (!selectedSupplier) return;
             
             // Store selected supplier in session storage and redirect
-            sessionStorage.setItem('preselectedSupplier', supplier.name);
+            sessionStorage.setItem('preselectedSupplier', selectedSupplier.name);
             window.location.href = '/add';
         }
 
@@ -1524,6 +1531,7 @@
             
             if (selectedSupplier) {
                 loadSupplierInvoices(selectedSupplier.name);
+                loadSupplierPayments(selectedSupplier.name);
             }
         }
 
