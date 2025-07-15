@@ -110,15 +110,35 @@ async function createTables() {
         `);
         console.log('✅ جدول ربط الفواتير بأوامر الشراء جاهز');
 
-        // إضافة حقل file_path لجدول purchase_orders إذا لم يكن موجوداً (تحديث للجداول الموجودة)
+        // تحديث جدول purchase_orders بإضافة الأعمدة المفقودة
+        try {
+            await pool.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+            `);
+            console.log('✅ تم إضافة حقل status لجدول أوامر الشراء');
+        } catch (error) {
+            console.log('ℹ️ حقل status موجود بالفعل في جدول أوامر الشراء');
+        }
+
         try {
             await pool.query(`
                 ALTER TABLE purchase_orders 
                 ADD COLUMN IF NOT EXISTS file_path VARCHAR(500)
             `);
-            console.log('✅ تم تحديث جدول أوامر الشراء بإضافة حقل file_path');
+            console.log('✅ تم إضافة حقل file_path لجدول أوامر الشراء');
         } catch (error) {
             console.log('ℹ️ حقل file_path موجود بالفعل في جدول أوامر الشراء');
+        }
+
+        try {
+            await pool.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            `);
+            console.log('✅ تم إضافة حقل updated_at لجدول أوامر الشراء');
+        } catch (error) {
+            console.log('ℹ️ حقل updated_at موجود بالفعل في جدول أوامر الشراء');
         }
 
         // إضافة indexes لتحسين الأداء
@@ -198,25 +218,74 @@ async function insertSampleData() {
         
         // إذا لم توجد بيانات، أدرج بيانات تجريبية
         if (parseInt(suppliersCount.rows[0].count) === 0) {
-            await pool.query(`
-                INSERT INTO suppliers (name, contact_info, address) VALUES 
-                ('شركة الإمدادات الذكية', 'هاتف: 0123456789', 'الرياض، المملكة العربية السعودية'),
-                ('مؤسسة التقنية المتقدمة', 'هاتف: 0123456788', 'جدة، المملكة العربية السعودية'),
-                ('شركة الحلول المبتكرة', 'هاتف: 0123456787', 'الدمام، المملكة العربية السعودية')
-                ON CONFLICT (name) DO NOTHING
-            `);
-            console.log('✅ تم إدراج موردين تجريبيين');
+            try {
+                await pool.query(`
+                    INSERT INTO suppliers (name, contact_info, address) VALUES 
+                    ('شركة الإمدادات الذكية', 'هاتف: 0123456789', 'الرياض، المملكة العربية السعودية'),
+                    ('مؤسسة التقنية المتقدمة', 'هاتف: 0123456788', 'جدة، المملكة العربية السعودية'),
+                    ('شركة الحلول المبتكرة', 'هاتف: 0123456787', 'الدمام، المملكة العربية السعودية')
+                    ON CONFLICT (name) DO NOTHING
+                `);
+                console.log('✅ تم إدراج موردين تجريبيين');
+            } catch (error) {
+                console.log('ℹ️ تجاهل إدراج الموردين (قد يكونوا موجودين)');
+            }
         }
 
         if (parseInt(ordersCount.rows[0].count) === 0) {
-            await pool.query(`
-                INSERT INTO purchase_orders (order_number, supplier_name, description, amount, status, order_date, notes) VALUES 
-                ('PO-0001', 'شركة الإمدادات الذكية', 'شراء معدات مكتبية متنوعة للفرع الجديد', 15000.00, 'pending', CURRENT_DATE - INTERVAL '5 days', 'أمر شراء عاجل، مطلوب التسليم خلال أسبوع'),
-                ('PO-0002', 'مؤسسة التقنية المتقدمة', 'أجهزة كمبيوتر وملحقاتها للقسم الإداري', 45000.00, 'approved', CURRENT_DATE - INTERVAL '3 days', 'تم اعتماد الأمر، في انتظار التسليم'),
-                ('PO-0003', 'شركة الحلول المبتكرة', 'برامج وتراخيص للنظام الجديد', 12000.00, 'completed', CURRENT_DATE - INTERVAL '1 day', 'تم التسليم والتركيب بالكامل')
-                ON CONFLICT (order_number) DO NOTHING
-            `);
-            console.log('✅ تم إدراج أوامر شراء تجريبية');
+            try {
+                // التحقق من وجود الأعمدة المطلوبة قبل الإدراج
+                const tableInfo = await pool.query(`
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'purchase_orders'
+                `);
+                
+                const columns = tableInfo.rows.map(row => row.column_name);
+                const hasStatus = columns.includes('status');
+                const hasFilePathCol = columns.includes('file_path');
+                
+                let insertQuery = `
+                    INSERT INTO purchase_orders (order_number, supplier_name, description, amount, order_date, notes
+                `;
+                
+                if (hasStatus) {
+                    insertQuery += ', status';
+                }
+                
+                insertQuery += `) VALUES 
+                    ('PO-0001', 'شركة الإمدادات الذكية', 'شراء معدات مكتبية متنوعة للفرع الجديد', 15000.00, CURRENT_DATE - INTERVAL '5 days', 'أمر شراء عاجل، مطلوب التسليم خلال أسبوع'
+                `;
+                
+                if (hasStatus) {
+                    insertQuery += ", 'pending'";
+                }
+                
+                insertQuery += `),
+                    ('PO-0002', 'مؤسسة التقنية المتقدمة', 'أجهزة كمبيوتر وملحقاتها للقسم الإداري', 45000.00, CURRENT_DATE - INTERVAL '3 days', 'تم اعتماد الأمر، في انتظار التسليم'
+                `;
+                
+                if (hasStatus) {
+                    insertQuery += ", 'approved'";
+                }
+                
+                insertQuery += `),
+                    ('PO-0003', 'شركة الحلول المبتكرة', 'برامج وتراخيص للنظام الجديد', 12000.00, CURRENT_DATE - INTERVAL '1 day', 'تم التسليم والتركيب بالكامل'
+                `;
+                
+                if (hasStatus) {
+                    insertQuery += ", 'completed'";
+                }
+                
+                insertQuery += `)
+                    ON CONFLICT (order_number) DO NOTHING
+                `;
+                
+                await pool.query(insertQuery);
+                console.log('✅ تم إدراج أوامر شراء تجريبية');
+            } catch (error) {
+                console.log('ℹ️ تجاهل إدراج أوامر الشراء التجريبية:', error.message);
+            }
         }
         
     } catch (error) {
@@ -562,30 +631,39 @@ async function deletePayment(paymentId) {
 // جلب جميع أوامر الشراء مع إمكانية الفلترة
 async function getAllPurchaseOrders(filters = {}) {
     try {
+        // التحقق من وجود حقل status
+        const tableInfo = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'purchase_orders' AND column_name = 'status'
+        `);
+        
+        const hasStatus = tableInfo.rows.length > 0;
+        
         let query = 'SELECT * FROM purchase_orders WHERE 1=1';
         const params = [];
         let paramIndex = 1;
         
         if (filters.supplier_name) {
-            query += ` AND supplier_name = $${paramIndex}`;
+            query += ` AND supplier_name = ${paramIndex}`;
             params.push(filters.supplier_name);
             paramIndex++;
         }
         
-        if (filters.status) {
-            query += ` AND status = $${paramIndex}`;
+        if (filters.status && hasStatus) {
+            query += ` AND status = ${paramIndex}`;
             params.push(filters.status);
             paramIndex++;
         }
         
         if (filters.date_from) {
-            query += ` AND order_date >= $${paramIndex}`;
+            query += ` AND order_date >= ${paramIndex}`;
             params.push(filters.date_from);
             paramIndex++;
         }
         
         if (filters.date_to) {
-            query += ` AND order_date <= $${paramIndex}`;
+            query += ` AND order_date <= ${paramIndex}`;
             params.push(filters.date_to);
             paramIndex++;
         }
@@ -593,7 +671,12 @@ async function getAllPurchaseOrders(filters = {}) {
         query += ' ORDER BY created_at DESC';
         
         const result = await pool.query(query, params);
-        return result.rows;
+        
+        // إضافة حقل status افتراضي إذا لم يكن موجوداً
+        return result.rows.map(row => ({
+            ...row,
+            status: row.status || 'pending'
+        }));
     } catch (error) {
         console.error('خطأ في جلب أوامر الشراء:', error);
         throw error;
@@ -630,6 +713,17 @@ async function getPurchaseOrdersBySupplier(supplierName) {
 // إضافة أمر شراء جديد
 async function addPurchaseOrder(orderData) {
     try {
+        // التحقق من وجود الأعمدة
+        const tableInfo = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'purchase_orders'
+        `);
+        
+        const columns = tableInfo.rows.map(row => row.column_name);
+        const hasStatus = columns.includes('status');
+        const hasFilePath = columns.includes('file_path');
+        
         const { 
             order_number,
             supplier_name, 
@@ -642,22 +736,52 @@ async function addPurchaseOrder(orderData) {
             file_path
         } = orderData;
         
-        const result = await pool.query(`
+        let insertQuery = `
             INSERT INTO purchase_orders 
-            (order_number, supplier_name, description, amount, status, order_date, delivery_date, notes, file_path) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-            RETURNING *
-        `, [
+            (order_number, supplier_name, description, amount, order_date, delivery_date, notes
+        `;
+        
+        let values = [
             order_number || null,
             supplier_name,
             description,
             amount,
-            status || 'pending',
             order_date || new Date(),
             delivery_date || null,
-            notes || '',
-            file_path || null
-        ]);
+            notes || ''
+        ];
+        
+        let valueIndex = 8;
+        
+        if (hasStatus) {
+            insertQuery += ', status';
+            values.push(status || 'pending');
+            valueIndex++;
+        }
+        
+        if (hasFilePath) {
+            insertQuery += ', file_path';
+            values.push(file_path || null);
+            valueIndex++;
+        }
+        
+        insertQuery += ') VALUES ($1, $2, $3, $4, $5, $6, $7';
+        
+        if (hasStatus) {
+            insertQuery += ', $8';
+        }
+        
+        if (hasFilePath) {
+            if (hasStatus) {
+                insertQuery += ', $9';
+            } else {
+                insertQuery += ', $8';
+            }
+        }
+        
+        insertQuery += ') RETURNING *';
+        
+        const result = await pool.query(insertQuery, values);
         
         return result.rows[0];
     } catch (error) {
@@ -669,6 +793,17 @@ async function addPurchaseOrder(orderData) {
 // تحديث أمر شراء
 async function updatePurchaseOrder(orderId, orderData) {
     try {
+        // التحقق من وجود الأعمدة
+        const tableInfo = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'purchase_orders'
+        `);
+        
+        const columns = tableInfo.rows.map(row => row.column_name);
+        const hasStatus = columns.includes('status');
+        const hasFilePath = columns.includes('file_path');
+        
         const {
             order_number,
             supplier_name,
@@ -681,31 +816,45 @@ async function updatePurchaseOrder(orderId, orderData) {
             file_path
         } = orderData;
         
-        const result = await pool.query(`
+        let updateQuery = `
             UPDATE purchase_orders SET
                 order_number = $1,
                 supplier_name = $2,
                 description = $3,
                 amount = $4,
-                status = $5,
-                order_date = $6,
-                delivery_date = $7,
-                notes = $8,
-                file_path = $9
-            WHERE id = $10
-            RETURNING *
-        `, [
+                order_date = $5,
+                delivery_date = $6,
+                notes = $7
+        `;
+        
+        let values = [
             order_number,
             supplier_name,
             description,
             amount,
-            status || 'pending',
             order_date,
             delivery_date,
-            notes || '',
-            file_path,
-            orderId
-        ]);
+            notes || ''
+        ];
+        
+        let valueIndex = 8;
+        
+        if (hasStatus) {
+            updateQuery += `, status = ${valueIndex}`;
+            values.push(status || 'pending');
+            valueIndex++;
+        }
+        
+        if (hasFilePath) {
+            updateQuery += `, file_path = ${valueIndex}`;
+            values.push(file_path);
+            valueIndex++;
+        }
+        
+        updateQuery += ` WHERE id = ${valueIndex} RETURNING *`;
+        values.push(orderId);
+        
+        const result = await pool.query(updateQuery, values);
         
         return result.rows[0];
     } catch (error) {
@@ -867,23 +1016,40 @@ async function getStats() {
         // الرصيد المتبقي
         stats.balance = stats.totalAmount - stats.totalPaid;
         
-        // إحصائيات أوامر الشراء
-        const ordersStatsResult = await pool.query(`
-            SELECT 
-                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_orders,
-                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_orders,
-                COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_orders,
-                COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_orders,
-                SUM(amount) as total_orders_amount
-            FROM purchase_orders
-        `);
-        
-        const ordersStats = ordersStatsResult.rows[0];
-        stats.pendingOrders = parseInt(ordersStats.pending_orders) || 0;
-        stats.approvedOrders = parseInt(ordersStats.approved_orders) || 0;
-        stats.completedOrders = parseInt(ordersStats.completed_orders) || 0;
-        stats.cancelledOrders = parseInt(ordersStats.cancelled_orders) || 0;
-        stats.totalOrdersAmount = parseFloat(ordersStats.total_orders_amount) || 0;
+        // إحصائيات أوامر الشراء - مع حماية من الأخطاء
+        try {
+            const ordersStatsResult = await pool.query(`
+                SELECT 
+                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_orders,
+                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_orders,
+                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_orders,
+                    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_orders,
+                    SUM(amount) as total_orders_amount
+                FROM purchase_orders
+            `);
+            
+            const ordersStats = ordersStatsResult.rows[0];
+            stats.pendingOrders = parseInt(ordersStats.pending_orders) || 0;
+            stats.approvedOrders = parseInt(ordersStats.approved_orders) || 0;
+            stats.completedOrders = parseInt(ordersStats.completed_orders) || 0;
+            stats.cancelledOrders = parseInt(ordersStats.cancelled_orders) || 0;
+            stats.totalOrdersAmount = parseFloat(ordersStats.total_orders_amount) || 0;
+        } catch (statusError) {
+            // إذا كان حقل status غير موجود، استخدم القيم الافتراضية
+            console.log('ℹ️ حقل status غير موجود في purchase_orders، استخدام القيم الافتراضية');
+            stats.pendingOrders = 0;
+            stats.approvedOrders = 0;
+            stats.completedOrders = 0;
+            stats.cancelledOrders = 0;
+            
+            // جلب إجمالي المبلغ بدون status
+            try {
+                const totalOrdersResult = await pool.query('SELECT SUM(amount) as total FROM purchase_orders');
+                stats.totalOrdersAmount = parseFloat(totalOrdersResult.rows[0].total) || 0;
+            } catch (totalError) {
+                stats.totalOrdersAmount = 0;
+            }
+        }
         
         return stats;
     } catch (error) {
