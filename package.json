@@ -1,35 +1,73 @@
 {
   "name": "erp-alraed",
-  "version": "3.0.0",
-  "description": "نظام إدارة المشتريات - الرائد | نظام شامل لإدارة الموردين والفواتير والمدفوعات",
+  "version": "3.1.0",
+  "description": "نظام إدارة المشتريات - الرائد | نظام شامل ومحدث لإدارة الموردين والفواتير والمدفوعات وأوامر الشراء مع واجهة عربية متطورة",
   "main": "server/app.js",
   "scripts": {
     "start": "node server/app.js",
     "dev": "nodemon server/app.js",
-    "test": "node server/app.js --test",
+    "test": "node --test",
+    "test:api": "node tests/api.test.js",
     "init-db": "node -e \"require('./server/database').initializeDatabase()\"",
+    "check-db": "node -e \"require('./server/database').checkDatabaseHealth().then(r => console.log(r))\"",
     "backup": "node scripts/backup.js",
-    "restore": "node scripts/restore.js"
+    "restore": "node scripts/restore.js",
+    "cleanup": "node -e \"require('./server/database').cleanupDatabase()\"",
+    "lint": "eslint server/ --fix",
+    "lint:check": "eslint server/",
+    "format": "prettier --write server/ views/ public/",
+    "format:check": "prettier --check server/ views/ public/",
+    "build": "echo 'تم تجهيز النظام للإنتاج'",
+    "deploy": "npm run lint && npm run test && npm run build",
+    "logs": "echo 'عرض سجلات النظام'",
+    "stats": "node -e \"require('./server/database').getDatabaseStats().then(s => console.log(JSON.stringify(s, null, 2)))\""
   },
   "dependencies": {
     "express": "^4.18.2",
     "pg": "^8.11.3",
     "multer": "^1.4.5-lts.1",
     "cors": "^2.8.5",
-    "helmet": "^7.0.0",
+    "helmet": "^7.1.0",
     "compression": "^1.7.4",
-    "express-rate-limit": "^6.7.1",
-    "uuid": "^9.0.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "uuid": "^9.0.1",
     "moment": "^2.29.4",
-    "validator": "^13.9.0"
+    "moment-timezone": "^0.5.43",
+    "validator": "^13.11.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1",
+    "morgan": "^1.10.0",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "express-async-errors": "^3.1.1",
+    "express-fileupload": "^1.4.2",
+    "sharp": "^0.32.6",
+    "pdf-parse": "^1.1.1",
+    "archiver": "^6.0.1",
+    "csv-parser": "^3.0.0",
+    "fast-csv": "^4.3.6",
+    "node-cron": "^3.0.2",
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "eslint": "^8.45.0"
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
+    "eslint-config-node": "^4.1.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-security": "^1.7.1",
+    "prettier": "^3.1.0",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "@types/node": "^20.10.0"
   },
   "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=7.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "keywords": [
     "erp",
@@ -37,6 +75,7 @@
     "invoices",
     "suppliers",
     "payments",
+    "purchase-orders",
     "management",
     "business",
     "accounting",
@@ -44,52 +83,223 @@
     "arabic",
     "nodejs",
     "postgresql",
-    "bootstrap"
+    "bootstrap",
+    "dashboard",
+    "invoice-management",
+    "supplier-management",
+    "financial-management",
+    "enterprise-resource-planning",
+    "arabic-interface",
+    "rtl-support",
+    "middle-east",
+    "saudi-arabia"
   ],
   "author": {
-    "name": "الرائد",
+    "name": "فريق الرائد التقني",
     "email": "info@erp-alraed.com",
     "url": "https://erp-alraed.com"
   },
-  "license": "ISC",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/ixAbdulaziz/ERP-ALRAED"
   },
   "homepage": "https://erp-alraed.com",
   "bugs": {
-    "url": "https://github.com/ixAbdulaziz/ERP-ALRAED/issues"
+    "url": "https://github.com/ixAbdulaziz/ERP-ALRAED/issues",
+    "email": "support@erp-alraed.com"
+  },
+  "funding": {
+    "type": "sponsorship",
+    "url": "https://github.com/sponsors/ixAbdulaziz"
   },
   "config": {
     "port": 3000,
-    "upload_limit": "5mb",
-    "session_secret": "erp-alraed-secret-key"
+    "upload_limit": "10mb",
+    "session_secret": "erp-alraed-secure-key-2024",
+    "jwt_secret": "erp-alraed-jwt-secret-2024",
+    "bcrypt_rounds": 12,
+    "rate_limit_requests": 1000,
+    "rate_limit_window": 900000,
+    "cleanup_interval": "0 2 * * *",
+    "backup_interval": "0 3 * * 0",
+    "log_level": "info",
+    "max_file_size": "5242880",
+    "allowed_file_types": [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf"
+    ]
   },
   "nodemonConfig": {
     "watch": [
-      "server/"
+      "server/",
+      "views/",
+      "public/"
     ],
-    "ext": "js,json",
+    "ext": "js,json,html,css",
     "ignore": [
       "uploads/",
-      "public/",
-      "node_modules/"
+      "node_modules/",
+      "logs/",
+      "backups/",
+      "*.test.js"
     ],
-    "delay": 1000
+    "delay": 1000,
+    "env": {
+      "NODE_ENV": "development"
+    }
   },
   "eslintConfig": {
     "env": {
       "node": true,
-      "es2021": true
+      "es2021": true,
+      "jest": true
     },
-    "extends": "eslint:recommended",
+    "extends": [
+      "eslint:recommended",
+      "plugin:node/recommended",
+      "plugin:security/recommended",
+      "prettier"
+    ],
     "parserOptions": {
-      "ecmaVersion": 12,
+      "ecmaVersion": 2021,
       "sourceType": "module"
     },
     "rules": {
       "no-console": "off",
-      "no-unused-vars": "warn"
+      "no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
+      "node/no-unpublished-require": "off",
+      "node/no-missing-require": "error",
+      "security/detect-object-injection": "warn",
+      "security/detect-non-literal-fs-filename": "warn",
+      "prefer-const": "error",
+      "no-var": "error",
+      "object-shorthand": "error",
+      "prefer-template": "error"
     }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "bracketSpacing": true,
+    "arrowParens": "avoid",
+    "endOfLine": "lf"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,html,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test"
+    }
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "server/**/*.js",
+      "!server/database.js",
+      "!server/app.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ]
+  },
+  "security": {
+    "advisoryUrl": "https://registry.npmjs.org/-/npm/v1/security/audits",
+    "auditLevel": "moderate"
+  },
+  "performance": {
+    "monitoring": true,
+    "metrics": [
+      "response_time",
+      "throughput",
+      "error_rate",
+      "memory_usage",
+      "cpu_usage"
+    ]
+  },
+  "features": {
+    "suppliers_management": true,
+    "invoices_management": true,
+    "purchase_orders_management": true,
+    "payments_tracking": true,
+    "file_uploads": true,
+    "advanced_search": true,
+    "excel_export": true,
+    "pdf_generation": true,
+    "email_notifications": true,
+    "backup_restore": true,
+    "audit_trail": true,
+    "multi_currency": false,
+    "multi_language": false,
+    "api_access": true,
+    "mobile_responsive": true,
+    "real_time_updates": false,
+    "advanced_reporting": true
+  },
+  "database": {
+    "type": "postgresql",
+    "version": ">=13.0.0",
+    "ssl_required": true,
+    "connection_pool": {
+      "min": 2,
+      "max": 20,
+      "idle_timeout": 30000,
+      "connection_timeout": 2000
+    }
+  },
+  "deployment": {
+    "platform": "railway",
+    "domain": "erp-alraed.com",
+    "ssl": true,
+    "cdn": false,
+    "monitoring": true,
+    "auto_deploy": true,
+    "health_check": "/api/test"
+  },
+  "documentation": {
+    "api_docs": "/docs/api",
+    "user_guide": "/docs/user-guide",
+    "developer_guide": "/docs/developer-guide",
+    "changelog": "/CHANGELOG.md",
+    "readme": "/README.md"
+  },
+  "support": {
+    "email": "support@erp-alraed.com",
+    "docs": "https://docs.erp-alraed.com",
+    "github": "https://github.com/ixAbdulaziz/ERP-ALRAED/issues",
+    "community": "https://discord.gg/erp-alraed"
+  },
+  "badges": {
+    "build": "https://img.shields.io/github/workflow/status/ixAbdulaziz/ERP-ALRAED/CI",
+    "version": "https://img.shields.io/npm/v/erp-alraed",
+    "license": "https://img.shields.io/npm/l/erp-alraed",
+    "downloads": "https://img.shields.io/npm/dt/erp-alraed",
+    "stars": "https://img.shields.io/github/stars/ixAbdulaziz/ERP-ALRAED"
   }
 }
