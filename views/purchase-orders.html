@@ -235,11 +235,6 @@
             border-radius: 15px;
         }
 
-        .status-pending { background: #ffc107; color: #000; }
-        .status-approved { background: #28a745; color: #fff; }
-        .status-completed { background: #17a2b8; color: #fff; }
-        .status-cancelled { background: #dc3545; color: #fff; }
-
         .modal-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -271,35 +266,6 @@
             color: #667eea;
             margin-bottom: 15px;
         }
-
-        .linked-invoices {
-            background: rgba(40, 167, 69, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 15px;
-        }
-
-        .invoice-link-item {
-            background: white;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid #28a745;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .balance-indicator {
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .balance-positive { background: #d4edda; color: #155724; }
-        .balance-negative { background: #f8d7da; color: #721c24; }
-        .balance-zero { background: #d1ecf1; color: #0c5460; }
 
         .empty-state {
             text-align: center;
@@ -347,6 +313,34 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        .autocomplete-container {
+            position: relative;
+        }
+        
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 10px 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .autocomplete-suggestion {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .autocomplete-suggestion:hover {
+            background: rgba(102, 126, 234, 0.1);
         }
 
         @media (max-width: 768px) {
@@ -404,7 +398,7 @@
         <!-- Page Header -->
         <div class="page-header fade-in">
             <h1><i class="fas fa-shopping-cart"></i> إدارة أوامر الشراء</h1>
-            <p>إدارة شاملة لأوامر الشراء مع ربطها بالفواتير ومتابعة التكاليف والموازنات</p>
+            <p>إدارة أوامر الشراء بطريقة مبسطة وسهلة</p>
         </div>
 
         <!-- Alert Container -->
@@ -412,17 +406,9 @@
 
         <!-- Statistics Section -->
         <div class="stats-row fade-in">
-            <div class="stat-card" onclick="filterByStatus('all')">
+            <div class="stat-card">
                 <h3 id="totalOrders">0</h3>
                 <p><i class="fas fa-shopping-cart me-1"></i> إجمالي الأوامر</p>
-            </div>
-            <div class="stat-card" onclick="filterByStatus('pending')">
-                <h3 id="pendingOrders">0</h3>
-                <p><i class="fas fa-clock me-1"></i> أوامر معلقة</p>
-            </div>
-            <div class="stat-card" onclick="filterByStatus('completed')">
-                <h3 id="completedOrders">0</h3>
-                <p><i class="fas fa-check-circle me-1"></i> أوامر مكتملة</p>
             </div>
             <div class="stat-card">
                 <h3 id="totalOrdersValue">0</h3>
@@ -430,11 +416,11 @@
             </div>
         </div>
 
-        <!-- Search and Filters Section -->
+        <!-- Search and Add Section -->
         <div class="section-card fade-in">
             <div class="section-title">
                 <i class="fas fa-search"></i>
-                البحث والتصفية
+                البحث والإضافة
                 <div class="ms-auto">
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOrderModal">
                         <i class="fas fa-plus me-1"></i> إضافة أمر شراء جديد
@@ -447,33 +433,18 @@
 
             <div class="search-filters">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="supplierSearch" class="form-label">البحث بالمورد</label>
                         <input type="text" class="form-control" id="supplierSearch" 
                                placeholder="اسم المورد..." onkeyup="filterOrders()">
                     </div>
                     <div class="col-md-3 mb-3">
-                        <label for="statusFilter" class="form-label">الحالة</label>
-                        <select class="form-select" id="statusFilter" onchange="filterOrders()">
-                            <option value="">جميع الحالات</option>
-                            <option value="pending">معلق</option>
-                            <option value="approved">معتمد</option>
-                            <option value="completed">مكتمل</option>
-                            <option value="cancelled">ملغي</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-3">
                         <label for="dateFrom" class="form-label">من تاريخ</label>
                         <input type="date" class="form-control" id="dateFrom" onchange="filterOrders()">
                     </div>
-                    <div class="col-md-2 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="dateTo" class="form-label">إلى تاريخ</label>
                         <input type="date" class="form-control" id="dateTo" onchange="filterOrders()">
-                    </div>
-                    <div class="col-md-1 mb-3 d-flex align-items-end">
-                        <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                            <i class="fas fa-times"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -503,14 +474,11 @@
                                 البيان <i class="fas fa-sort"></i>
                             </th>
                             <th class="sortable" data-column="amount" onclick="sortTable('amount')">
-                                مبلغ الأمر <i class="fas fa-sort"></i>
+                                المبلغ <i class="fas fa-sort"></i>
                             </th>
                             <th class="sortable" data-column="order_date" onclick="sortTable('order_date')">
-                                تاريخ الأمر <i class="fas fa-sort"></i>
+                                التاريخ <i class="fas fa-sort"></i>
                             </th>
-                            <th>الحالة</th>
-                            <th>الموازنة</th>
-                            <th>الفواتير المرتبطة</th>
                             <th>المرفق</th>
                             <th>الإجراءات</th>
                         </tr>
@@ -543,18 +511,12 @@
                 </div>
                 <div class="modal-body">
                     <form id="addOrderForm" enctype="multipart/form-data">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="orderNumber" class="form-label">رقم الأمر (اختياري)</label>
-                                <input type="text" class="form-control" id="orderNumber" name="orderNumber" 
-                                       placeholder="سيتم إنشاؤه تلقائياً إذا ترك فارغاً">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="orderDate" class="form-label">تاريخ الأمر</label>
-                                <input type="date" class="form-control" id="orderDate" name="orderDate" required>
-                            </div>
+                        <!-- إشعار رقم الأمر التلقائي -->
+                        <div class="alert alert-info text-center mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            سيتم إنشاء رقم الأمر تلقائياً (مثال: 0001, 0002, 0003...)
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="supplierName" class="form-label">اسم المورد *</label>
@@ -565,12 +527,8 @@
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="orderAmount" class="form-label">مبلغ الأمر *</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="orderAmount" name="orderAmount" 
-                                           step="0.01" min="0" required>
-                                    <span class="input-group-text">ريال</span>
-                                </div>
+                                <label for="orderDate" class="form-label">تاريخ الأمر *</label>
+                                <input type="date" class="form-control" id="orderDate" name="orderDate" required>
                             </div>
                         </div>
 
@@ -580,34 +538,23 @@
                                       rows="3" placeholder="وصف تفصيلي لأمر الشراء..." required></textarea>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="deliveryDate" class="form-label">تاريخ التسليم المتوقع</label>
-                                <input type="date" class="form-control" id="deliveryDate" name="deliveryDate">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="orderStatus" class="form-label">حالة الأمر</label>
-                                <select class="form-select" id="orderStatus" name="orderStatus">
-                                    <option value="pending">معلق</option>
-                                    <option value="approved">معتمد</option>
-                                    <option value="completed">مكتمل</option>
-                                </select>
+                        <div class="mb-3">
+                            <label for="orderAmount" class="form-label">مبلغ أمر الشراء *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-money-bill"></i></span>
+                                <input type="number" class="form-control" id="orderAmount" name="orderAmount" 
+                                       step="0.01" min="0" placeholder="0.00" required>
+                                <span class="input-group-text">ريال</span>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="orderNotes" class="form-label">ملاحظات</label>
-                            <textarea class="form-control" id="orderNotes" name="orderNotes" 
-                                      rows="2" placeholder="ملاحظات إضافية..."></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">رفع ملف PDF (اختياري)</label>
+                            <label class="form-label">رفع ملف مرفق (PDF أو صورة)</label>
                             <div class="file-upload-area" onclick="document.getElementById('orderFile').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                <h6>انقر لرفع ملف PDF</h6>
-                                <p class="text-muted mb-0">الحد الأقصى: 5 ميجابايت</p>
-                                <input type="file" id="orderFile" name="orderFile" accept=".pdf" 
+                                <h6>انقر لرفع ملف PDF أو صورة</h6>
+                                <p class="text-muted mb-0">PDF, JPG, PNG (الحد الأقصى: 5 ميجابايت)</p>
+                                <input type="file" id="orderFile" name="orderFile" accept=".pdf,.jpg,.jpeg,.png" 
                                        style="display: none;" onchange="displayOrderFileName()">
                             </div>
                             <div id="orderFileName" class="mt-2 text-center" style="display: none;"></div>
@@ -633,66 +580,47 @@
                 <div class="modal-body">
                     <form id="editOrderForm" enctype="multipart/form-data">
                         <input type="hidden" id="editOrderId">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="editOrderNumber" class="form-label">رقم الأمر</label>
-                                <input type="text" class="form-control" id="editOrderNumber" name="editOrderNumber">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editOrderDate" class="form-label">تاريخ الأمر</label>
-                                <input type="date" class="form-control" id="editOrderDate" name="editOrderDate" required>
-                            </div>
-                        </div>
                         
+                        <!-- عرض رقم الأمر الحالي -->
+                        <div class="alert alert-info text-center mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            رقم الأمر: <strong id="displayOrderNumber">-</strong>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="editSupplierName" class="form-label">اسم المورد</label>
+                                <label for="editSupplierName" class="form-label">اسم المورد *</label>
                                 <input type="text" class="form-control" id="editSupplierName" name="editSupplierName" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="editOrderAmount" class="form-label">مبلغ الأمر</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="editOrderAmount" name="editOrderAmount" 
-                                           step="0.01" min="0" required>
-                                    <span class="input-group-text">ريال</span>
-                                </div>
+                                <label for="editOrderDate" class="form-label">تاريخ الأمر *</label>
+                                <input type="date" class="form-control" id="editOrderDate" name="editOrderDate" required>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label for="editOrderDescription" class="form-label">البيان</label>
+                            <label for="editOrderDescription" class="form-label">البيان *</label>
                             <textarea class="form-control" id="editOrderDescription" name="editOrderDescription" 
                                       rows="3" required></textarea>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="editDeliveryDate" class="form-label">تاريخ التسليم المتوقع</label>
-                                <input type="date" class="form-control" id="editDeliveryDate" name="editDeliveryDate">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editOrderStatus" class="form-label">حالة الأمر</label>
-                                <select class="form-select" id="editOrderStatus" name="editOrderStatus">
-                                    <option value="pending">معلق</option>
-                                    <option value="approved">معتمد</option>
-                                    <option value="completed">مكتمل</option>
-                                    <option value="cancelled">ملغي</option>
-                                </select>
-                            </div>
-                        </div>
-
                         <div class="mb-3">
-                            <label for="editOrderNotes" class="form-label">ملاحظات</label>
-                            <textarea class="form-control" id="editOrderNotes" name="editOrderNotes" rows="2"></textarea>
+                            <label for="editOrderAmount" class="form-label">مبلغ أمر الشراء *</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-money-bill"></i></span>
+                                <input type="number" class="form-control" id="editOrderAmount" name="editOrderAmount" 
+                                       step="0.01" min="0" required>
+                                <span class="input-group-text">ريال</span>
+                            </div>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">تحديث الملف المرفق</label>
                             <div class="file-upload-area" onclick="document.getElementById('editOrderFile').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                <h6>انقر لرفع ملف PDF جديد</h6>
-                                <p class="text-muted mb-0">اترك فارغاً للاحتفاظ بالملف الحالي</p>
-                                <input type="file" id="editOrderFile" name="editOrderFile" accept=".pdf" 
+                                <h6>انقر لرفع ملف جديد</h6>
+                                <p class="text-muted mb-0">PDF, JPG, PNG - اترك فارغاً للاحتفاظ بالملف الحالي</p>
+                                <input type="file" id="editOrderFile" name="editOrderFile" accept=".pdf,.jpg,.jpeg,.png" 
                                        style="display: none;" onchange="displayEditOrderFileName()">
                             </div>
                             <div id="editOrderFileName" class="mt-2 text-center" style="display: none;"></div>
@@ -702,48 +630,6 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" class="btn btn-primary" onclick="saveOrderChanges()">حفظ التغييرات</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Link Invoices Modal -->
-    <div class="modal fade" id="linkInvoicesModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-link me-2"></i> ربط الفواتير بأمر الشراء</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="linkOrderId">
-                    <div class="mb-4">
-                        <h6 class="fw-bold">أمر الشراء: <span id="linkOrderDetails"></span></h6>
-                    </div>
-
-                    <!-- Current Linked Invoices -->
-                    <div class="linked-invoices">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-paperclip me-1"></i> الفواتير المرتبطة حالياً</h6>
-                        <div id="currentLinkedInvoices">
-                            <!-- سيتم ملئها بـ JavaScript -->
-                        </div>
-                    </div>
-
-                    <!-- Available Invoices to Link -->
-                    <div class="mt-4">
-                        <h6 class="fw-bold mb-3"><i class="fas fa-plus me-1"></i> إضافة فواتير جديدة</h6>
-                        <div class="mb-3">
-                            <label for="invoiceSearch" class="form-label">البحث عن فاتورة</label>
-                            <input type="text" class="form-control" id="invoiceSearch" 
-                                   placeholder="رقم الفاتورة أو المورد..." onkeyup="searchInvoices()">
-                        </div>
-                        <div id="availableInvoices" style="max-height: 300px; overflow-y: auto;">
-                            <!-- سيتم ملئها بـ JavaScript -->
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
                 </div>
             </div>
         </div>
@@ -762,7 +648,7 @@
                         <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
                     </div>
                     <h5 class="text-center">هل أنت متأكد من حذف أمر الشراء؟</h5>
-                    <p class="text-center text-muted">سيتم حذف جميع ربط الفواتير مع هذا الأمر أيضاً</p>
+                    <p class="text-center text-muted">لا يمكن التراجع عن هذا الإجراء</p>
                     <div id="deleteOrderDetails" class="bg-light p-3 rounded"></div>
                 </div>
                 <div class="modal-footer">
@@ -778,7 +664,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file-pdf me-2"></i> عرض المرفق</h5>
+                    <h5 class="modal-title"><i class="fas fa-file me-2"></i> عرض المرفق</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body text-center">
@@ -804,56 +690,19 @@
         let purchaseOrders = [];
         let filteredOrders = [];
         let suppliers = [];
-        let allInvoices = [];
-        let availableInvoices = [];
         let sortColumn = null;
         let sortDirection = 'asc';
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 تحميل صفحة أوامر الشراء...');
+            console.log('🚀 تحميل صفحة أوامر الشراء المبسطة...');
             
             // Set today's date as default
             document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
             
             // Load initial data
             loadAllData();
-            
-            // Setup autocomplete styles
-            setupAutocompleteStyles();
         });
-
-        // Setup autocomplete styles
-        function setupAutocompleteStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
-                .autocomplete-container {
-                    position: relative;
-                }
-                .autocomplete-suggestions {
-                    position: absolute;
-                    top: 100%;
-                    left: 0;
-                    right: 0;
-                    background: white;
-                    border: 1px solid #ddd;
-                    border-radius: 0 0 10px 10px;
-                    max-height: 200px;
-                    overflow-y: auto;
-                    z-index: 1000;
-                    display: none;
-                }
-                .autocomplete-suggestion {
-                    padding: 12px 15px;
-                    cursor: pointer;
-                    border-bottom: 1px solid #eee;
-                }
-                .autocomplete-suggestion:hover {
-                    background: rgba(102, 126, 234, 0.1);
-                }
-            `;
-            document.head.appendChild(style);
-        }
 
         // Show alert function
         function showAlert(message, type = 'info') {
@@ -885,8 +734,7 @@
             try {
                 await Promise.all([
                     loadPurchaseOrders(),
-                    loadSuppliers(),
-                    loadAllInvoices()
+                    loadSuppliers()
                 ]);
                 updateStatistics();
                 console.log('✅ تم تحميل جميع البيانات');
@@ -941,28 +789,12 @@
             }
         }
 
-        // Load all invoices for linking
-        async function loadAllInvoices() {
-            try {
-                const response = await fetch('/api/invoices?limit=1000');
-                const result = await response.json();
-                
-                if (result.success) {
-                    allInvoices = result.data || [];
-                    console.log(`📋 تم تحميل ${allInvoices.length} فاتورة`);
-                } else {
-                    allInvoices = [];
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل الفواتير:', error);
-                allInvoices = [];
-            }
-        }
-
         // Setup supplier autocomplete
         function setupSupplierAutocomplete() {
             const supplierInput = document.getElementById('supplierName');
             const suggestionsDiv = document.getElementById('supplierSuggestions');
+            
+            if (!supplierInput || !suggestionsDiv) return;
             
             supplierInput.addEventListener('input', function() {
                 const query = this.value.toLowerCase();
@@ -1007,7 +839,8 @@
             
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fileName.innerHTML = `<i class="fas fa-file-pdf text-danger"></i> <strong>${file.name}</strong>`;
+                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
+                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
                 fileName.style.display = 'block';
             }
         }
@@ -1019,7 +852,8 @@
             
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fileName.innerHTML = `<i class="fas fa-file-pdf text-danger"></i> <strong>${file.name}</strong>`;
+                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
+                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
                 fileName.style.display = 'block';
             }
         }
@@ -1086,13 +920,9 @@
         // Update statistics
         function updateStatistics() {
             const total = purchaseOrders.length;
-            const pending = purchaseOrders.filter(order => order.status === 'pending').length;
-            const completed = purchaseOrders.filter(order => order.status === 'completed').length;
             const totalValue = purchaseOrders.reduce((sum, order) => sum + parseFloat(order.amount || 0), 0);
             
             document.getElementById('totalOrders').textContent = total;
-            document.getElementById('pendingOrders').textContent = pending;
-            document.getElementById('completedOrders').textContent = completed;
             document.getElementById('totalOrdersValue').textContent = totalValue.toLocaleString();
         }
 
@@ -1104,7 +934,6 @@
         // Filter orders
         function filterOrders() {
             const supplierSearch = document.getElementById('supplierSearch').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
             
@@ -1112,10 +941,6 @@
                 let matches = true;
                 
                 if (supplierSearch && !order.supplier_name.toLowerCase().includes(supplierSearch)) {
-                    matches = false;
-                }
-                
-                if (statusFilter && order.status !== statusFilter) {
                     matches = false;
                 }
                 
@@ -1132,21 +957,6 @@
             
             renderOrdersTable();
             updateOrdersCount();
-        }
-
-        // Filter by status (from stats cards)
-        function filterByStatus(status) {
-            document.getElementById('statusFilter').value = status === 'all' ? '' : status;
-            filterOrders();
-        }
-
-        // Clear filters
-        function clearFilters() {
-            document.getElementById('supplierSearch').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('dateFrom').value = '';
-            document.getElementById('dateTo').value = '';
-            filterOrders();
         }
 
         // Sort table
@@ -1208,34 +1018,25 @@
             tbody.innerHTML = filteredOrders.map(order => {
                 const formattedDate = new Date(order.order_date).toLocaleDateString('ar-SA');
                 const hasFile = order.file_path ? true : false;
-                const statusClass = `status-${order.status || 'pending'}`;
-                const statusText = getStatusText(order.status || 'pending');
                 
-                // Calculate budget balance (placeholder - will be implemented with invoice linking)
-                const budgetBalance = calculateBudgetBalance(order);
+                // Generate auto order number if not exists
+                const orderNumber = order.order_number || String(order.id).padStart(4, '0');
                 
                 return `
                     <tr>
-                        <td class="order-number">${order.order_number || `PO-${order.id}`}</td>
+                        <td class="order-number">${orderNumber}</td>
                         <td><span class="badge bg-info badge-custom">${order.supplier_name}</span></td>
-                        <td class="text-start" style="max-width: 200px;">
+                        <td class="text-start" style="max-width: 250px;">
                             <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${order.description}">
                                 ${order.description}
                             </div>
                         </td>
-                        <td class="amount-cell fw-bold">${parseFloat(order.amount).toLocaleString()}</td>
+                        <td class="amount-cell fw-bold">${parseFloat(order.amount).toLocaleString()} ريال</td>
                         <td>${formattedDate}</td>
-                        <td><span class="badge badge-custom ${statusClass}">${statusText}</span></td>
-                        <td>${budgetBalance}</td>
-                        <td>
-                            <button class="btn btn-outline-success btn-sm action-btn" onclick="linkInvoices(${order.id})" title="ربط الفواتير">
-                                <i class="fas fa-link"></i> <span id="linked-count-${order.id}">0</span>
-                            </button>
-                        </td>
                         <td>
                             ${hasFile ? 
                                 `<button class="btn btn-outline-success btn-sm action-btn" onclick="viewFile('${order.file_path}')" title="عرض المرفق">
-                                    <i class="fas fa-file-pdf"></i>
+                                    <i class="fas fa-file"></i>
                                 </button>` : 
                                 '<span class="text-muted">لا يوجد</span>'
                             }
@@ -1251,46 +1052,6 @@
                     </tr>
                 `;
             }).join('');
-            
-            // Load linked invoices count for each order
-            filteredOrders.forEach(order => {
-                loadLinkedInvoicesCount(order.id);
-            });
-        }
-
-        // Get status text in Arabic
-        function getStatusText(status) {
-            const statusMap = {
-                'pending': 'معلق',
-                'approved': 'معتمد',
-                'completed': 'مكتمل',
-                'cancelled': 'ملغي'
-            };
-            return statusMap[status] || 'معلق';
-        }
-
-        // Calculate budget balance (placeholder)
-        function calculateBudgetBalance(order) {
-            // This will be implemented with actual invoice linking
-            return '<span class="balance-indicator balance-zero">متوازن</span>';
-        }
-
-        // Load linked invoices count
-        async function loadLinkedInvoicesCount(orderId) {
-            try {
-                const response = await fetch(`/api/purchase-orders/${orderId}/invoices`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    const count = result.data.length;
-                    const countElement = document.getElementById(`linked-count-${orderId}`);
-                    if (countElement) {
-                        countElement.textContent = count;
-                    }
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل عدد الفواتير المرتبطة:', error);
-            }
         }
 
         // Edit order
@@ -1300,14 +1061,14 @@
             
             // Fill edit form
             document.getElementById('editOrderId').value = order.id;
-            document.getElementById('editOrderNumber').value = order.order_number || '';
-            document.getElementById('editOrderDate').value = order.order_date;
+            document.getElementById('displayOrderNumber').textContent = order.order_number || String(order.id).padStart(4, '0');
             document.getElementById('editSupplierName').value = order.supplier_name;
-            document.getElementById('editOrderAmount').value = order.amount;
+            document.getElementById('editOrderDate').value = order.order_date;
             document.getElementById('editOrderDescription').value = order.description;
-            document.getElementById('editDeliveryDate').value = order.delivery_date || '';
-            document.getElementById('editOrderStatus').value = order.status || 'pending';
-            document.getElementById('editOrderNotes').value = order.notes || '';
+            document.getElementById('editOrderAmount').value = order.amount;
+            
+            // Reset file display
+            document.getElementById('editOrderFileName').style.display = 'none';
             
             // Show modal
             new bootstrap.Modal(document.getElementById('editOrderModal')).show();
@@ -1357,8 +1118,9 @@
             if (!order) return;
             
             // Show order details in delete modal
+            const orderNumber = order.order_number || String(order.id).padStart(4, '0');
             document.getElementById('deleteOrderDetails').innerHTML = `
-                <strong>رقم الأمر:</strong> ${order.order_number || `PO-${order.id}`}<br>
+                <strong>رقم الأمر:</strong> ${orderNumber}<br>
                 <strong>المورد:</strong> ${order.supplier_name}<br>
                 <strong>المبلغ:</strong> ${parseFloat(order.amount).toLocaleString()} ريال<br>
                 <strong>التاريخ:</strong> ${new Date(order.order_date).toLocaleDateString('ar-SA')}
@@ -1407,50 +1169,6 @@
             }
         }
 
-        // Link invoices to order
-        function linkInvoices(orderId) {
-            const order = purchaseOrders.find(o => o.id === orderId);
-            if (!order) return;
-            
-            document.getElementById('linkOrderId').value = orderId;
-            document.getElementById('linkOrderDetails').textContent = 
-                `${order.order_number || `PO-${order.id}`} - ${order.supplier_name}`;
-            
-            loadCurrentLinkedInvoices(orderId);
-            loadAvailableInvoices(orderId);
-            
-            new bootstrap.Modal(document.getElementById('linkInvoicesModal')).show();
-        }
-
-        // Load current linked invoices (placeholder)
-        async function loadCurrentLinkedInvoices(orderId) {
-            const container = document.getElementById('currentLinkedInvoices');
-            // This will be implemented with actual API
-            container.innerHTML = `
-                <div class="text-center text-muted py-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    جاري تطوير ميزة ربط الفواتير...
-                </div>
-            `;
-        }
-
-        // Load available invoices for linking (placeholder)
-        function loadAvailableInvoices(orderId) {
-            const container = document.getElementById('availableInvoices');
-            // This will be implemented with actual API
-            container.innerHTML = `
-                <div class="text-center text-muted py-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    سيتم تطوير واجهة ربط الفواتير في المرحلة القادمة
-                </div>
-            `;
-        }
-
-        // Search invoices (placeholder)
-        function searchInvoices() {
-            // This will be implemented with actual search functionality
-        }
-
         // View file
         function viewFile(filePath) {
             const modal = new bootstrap.Modal(document.getElementById('viewFileModal'));
@@ -1461,15 +1179,33 @@
             
             downloadBtn.onclick = () => window.open(fullPath, '_blank');
             
-            container.innerHTML = `
-                <div class="text-center">
-                    <embed src="${fullPath}" type="application/pdf" width="100%" height="500px" style="border-radius: 10px;">
-                    <p class="mt-3">
-                        <i class="fas fa-info-circle text-info me-1"></i>
-                        إذا لم يظهر الملف، <a href="${fullPath}" target="_blank" class="text-primary">انقر هنا لفتحه في نافذة جديدة</a>
-                    </p>
-                </div>
-            `;
+            const fileExtension = filePath.split('.').pop().toLowerCase();
+            
+            if (fileExtension === 'pdf') {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <embed src="${fullPath}" type="application/pdf" width="100%" height="500px" style="border-radius: 10px;">
+                        <p class="mt-3">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            إذا لم يظهر الملف، <a href="${fullPath}" target="_blank" class="text-primary">انقر هنا لفتحه في نافذة جديدة</a>
+                        </p>
+                    </div>
+                `;
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <img src="${fullPath}" class="img-fluid" alt="مرفق أمر الشراء" style="max-height: 500px; border-radius: 10px;">
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-file fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted">لا يمكن معاينة هذا النوع من الملفات</h5>
+                        <p class="text-muted">انقر على زر "تحميل" لحفظ الملف على جهازك</p>
+                    </div>
+                `;
+            }
             
             modal.show();
         }
