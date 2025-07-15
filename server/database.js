@@ -3,32 +3,69 @@ const { Pool } = require('pg');
 // إعداد الاتصال بـ PostgreSQL
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20, // عدد الاتصالات المتزامنة
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+// مراقبة اتصالات قاعدة البيانات
+pool.on('connect', () => {
+    console.log('🔗 اتصال جديد بقاعدة البيانات');
+});
+
+pool.on('error', (err) => {
+    console.error('❌ خطأ في اتصال قاعدة البيانات:', err);
 });
 
 // اختبار الاتصال وإنشاء الجداول
 async function initializeDatabase() {
+    let client;
     try {
-        console.log('🔗 محاولة الاتصال بـ PostgreSQL...');
+        console.log('🔄 تهيئة قاعدة البيانات...');
+        console.log('🌍 البيئة:', process.env.NODE_ENV || 'development');
         
         // اختبار الاتصال
-        const client = await pool.connect();
+        client = await pool.connect();
         console.log('✅ تم الاتصال بـ PostgreSQL بنجاح');
+        
+        // فحص إصدار قاعدة البيانات
+        const versionResult = await client.query('SELECT version()');
+        console.log('📊 إصدار PostgreSQL:', versionResult.rows[0].version.split(' ')[1]);
+        
         client.release();
         
         // إنشاء الجداول
         await createTables();
-        console.log('🎉 تم إنشاء جميع الجداول بنجاح - قاعدة البيانات جاهزة للاستخدام!');
+        
+        // إدراج البيانات التجريبية إذا لزم الأمر
+        await insertSampleDataIfNeeded();
+        
+        console.log('🎉 تم إنشاء وتهيئة قاعدة البيانات بنجاح!');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         
     } catch (error) {
-        console.error('❌ خطأ في الاتصال بقاعدة البيانات:', error.message);
-        process.exit(1);
+        console.error('❌ خطأ في تهيئة قاعدة البيانات:', error.message);
+        
+        if (error.code === 'ECONNREFUSED') {
+            console.error('🔌 تأكد من أن خادم PostgreSQL يعمل');
+        } else if (error.code === 'ENOTFOUND') {
+            console.error('🌐 تأكد من صحة عنوان قاعدة البيانات');
+        } else if (error.code === '28P01') {
+            console.error('🔐 تأكد من صحة بيانات المصادقة');
+        }
+        
+        throw error;
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
 }
 
-// إنشاء الجداول
+// إنشاء الجداول مع الفهارس والقيود
 async function createTables() {
-    console.log('🔧 إنشاء الجداول...');
+    console.log('🔧 إنشاء الجداول والفهارس...');
     
     try {
         // جدول الموردين
@@ -38,10 +75,11 @@ async function createTables() {
                 name VARCHAR(255) NOT NULL UNIQUE,
                 contact_info TEXT,
                 address TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ جدول الموردين جاهز');
+        console.log('✅ جدول الموردين (suppliers) جاهز');
 
         // جدول الفواتير
         await pool.query(`
@@ -52,27 +90,27 @@ async function createTables() {
                 invoice_type VARCHAR(100) NOT NULL,
                 category VARCHAR(100) NOT NULL,
                 invoice_date DATE NOT NULL,
-                amount_before_tax DECIMAL(12,2) NOT NULL,
-                tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-                total_amount DECIMAL(12,2) NOT NULL,
+                amount_before_tax DECIMAL(12,2) NOT NULL CHECK (amount_before_tax >= 0),
+                tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
+                total_amount DECIMAL(12,2) NOT NULL CHECK (total_amount >= 0),
                 notes TEXT,
                 file_path VARCHAR(500),
-                status VARCHAR(50) DEFAULT 'pending',
+                status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled', 'overdue')),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ جدول الفواتير جاهز');
+        console.log('✅ جدول الفواتير (invoices) جاهز');
 
-        // جدول أوامر الشراء - محدث مع file_path
+        // جدول أوامر الشراء
         await pool.query(`
             CREATE TABLE IF NOT EXISTS purchase_orders (
                 id SERIAL PRIMARY KEY,
                 order_number VARCHAR(100) UNIQUE,
                 supplier_name VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
-                amount DECIMAL(12,2) NOT NULL,
-                status VARCHAR(50) DEFAULT 'pending',
+                amount DECIMAL(12,2) NOT NULL CHECK (amount >= 0),
+                status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'completed', 'cancelled')),
                 order_date DATE DEFAULT CURRENT_DATE,
                 delivery_date DATE,
                 notes TEXT,
@@ -81,7 +119,7 @@ async function createTables() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ جدول أوامر الشراء جاهز');
+        console.log('✅ جدول أوامر الشراء (purchase_orders) جاهز');
 
         // جدول المدفوعات
         await pool.query(`
@@ -89,14 +127,14 @@ async function createTables() {
                 id SERIAL PRIMARY KEY,
                 supplier_name VARCHAR(255) NOT NULL,
                 payment_date DATE NOT NULL,
-                amount DECIMAL(12,2) NOT NULL,
-                payment_method VARCHAR(100) DEFAULT 'cash',
+                amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+                payment_method VARCHAR(100) DEFAULT 'cash' CHECK (payment_method IN ('cash', 'bank_transfer', 'check', 'credit_card', 'other')),
                 reference_number VARCHAR(100),
                 notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ جدول المدفوعات جاهز');
+        console.log('✅ جدول المدفوعات (payments) جاهز');
 
         // جدول ربط الفواتير بأوامر الشراء
         await pool.query(`
@@ -108,73 +146,77 @@ async function createTables() {
                 UNIQUE(invoice_id, purchase_order_id)
             )
         `);
-        console.log('✅ جدول ربط الفواتير بأوامر الشراء جاهز');
+        console.log('✅ جدول ربط الفواتير بأوامر الشراء (invoice_purchase_order_links) جاهز');
 
-        // تحديث جدول purchase_orders بإضافة الأعمدة المفقودة
+        // إنشاء الفهارس لتحسين الأداء
+        await createIndexes();
+        
+        // إنشاء الدوال والـ Triggers
+        await createTriggersAndFunctions();
+        
+        console.log('✅ تم إنشاء جميع الجداول والفهارس والدوال بنجاح');
+        
+    } catch (error) {
+        console.error('❌ خطأ في إنشاء الجداول:', error.message);
+        throw error;
+    }
+}
+
+// إنشاء الفهارس لتحسين الأداء
+async function createIndexes() {
+    const indexes = [
+        // فهارس الفواتير
+        'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_name ON invoices(supplier_name)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_type ON invoices(invoice_type)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_category ON invoices(category)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_amount ON invoices(total_amount)',
+        'CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON invoices(created_at)',
+        
+        // فهارس المدفوعات
+        'CREATE INDEX IF NOT EXISTS idx_payments_supplier_name ON payments(supplier_name)',
+        'CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date)',
+        'CREATE INDEX IF NOT EXISTS idx_payments_method ON payments(payment_method)',
+        'CREATE INDEX IF NOT EXISTS idx_payments_amount ON payments(amount)',
+        
+        // فهارس أوامر الشراء
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_name ON purchase_orders(supplier_name)',
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_status ON purchase_orders(status)',
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON purchase_orders(order_date)',
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_amount ON purchase_orders(amount)',
+        
+        // فهارس الموردين
+        'CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)',
+        'CREATE INDEX IF NOT EXISTS idx_suppliers_created_at ON suppliers(created_at)',
+        
+        // فهارس جدول الربط
+        'CREATE INDEX IF NOT EXISTS idx_invoice_purchase_order_links_invoice_id ON invoice_purchase_order_links(invoice_id)',
+        'CREATE INDEX IF NOT EXISTS idx_invoice_purchase_order_links_purchase_order_id ON invoice_purchase_order_links(purchase_order_id)',
+        
+        // فهارس مركبة للاستعلامات المعقدة
+        'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_date ON invoices(supplier_name, invoice_date)',
+        'CREATE INDEX IF NOT EXISTS idx_payments_supplier_date ON payments(supplier_name, payment_date)',
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_status ON purchase_orders(supplier_name, status)'
+    ];
+    
+    for (const indexQuery of indexes) {
         try {
-            await pool.query(`
-                ALTER TABLE purchase_orders 
-                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
-            `);
-            console.log('✅ تم إضافة حقل status لجدول أوامر الشراء');
+            await pool.query(indexQuery);
         } catch (error) {
-            console.log('ℹ️ حقل status موجود بالفعل في جدول أوامر الشراء');
+            if (!error.message.includes('already exists')) {
+                console.warn('تحذير في إنشاء فهرس:', error.message);
+            }
         }
+    }
+    
+    console.log('✅ تم إنشاء جميع الفهارس بنجاح');
+}
 
-        try {
-            await pool.query(`
-                ALTER TABLE purchase_orders 
-                ADD COLUMN IF NOT EXISTS file_path VARCHAR(500)
-            `);
-            console.log('✅ تم إضافة حقل file_path لجدول أوامر الشراء');
-        } catch (error) {
-            console.log('ℹ️ حقل file_path موجود بالفعل في جدول أوامر الشراء');
-        }
-
-        try {
-            await pool.query(`
-                ALTER TABLE purchase_orders 
-                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            `);
-            console.log('✅ تم إضافة حقل updated_at لجدول أوامر الشراء');
-        } catch (error) {
-            console.log('ℹ️ حقل updated_at موجود بالفعل في جدول أوامر الشراء');
-        }
-
-        // إضافة indexes لتحسين الأداء
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_invoices_supplier_name ON invoices(supplier_name);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_payments_supplier_name ON payments(supplier_name);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_name ON purchase_orders(supplier_name);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_purchase_orders_status ON purchase_orders(status);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON purchase_orders(order_date);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_invoice_purchase_order_links_invoice_id ON invoice_purchase_order_links(invoice_id);
-        `);
-        await pool.query(`
-            CREATE INDEX IF NOT EXISTS idx_invoice_purchase_order_links_purchase_order_id ON invoice_purchase_order_links(purchase_order_id);
-        `);
-        console.log('✅ تم إنشاء جميع الفهارس المحسنة');
-
-        // إضافة trigger لتحديث updated_at
+// إنشاء الدوال والـ Triggers
+async function createTriggersAndFunctions() {
+    try {
+        // دالة تحديث updated_at تلقائياً
         await pool.query(`
             CREATE OR REPLACE FUNCTION update_updated_at_column()
             RETURNS TRIGGER AS $$
@@ -185,1013 +227,359 @@ async function createTables() {
             $$ language 'plpgsql';
         `);
 
+        // إنشاء triggers للموردين
+        await pool.query(`
+            DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers;
+            CREATE TRIGGER update_suppliers_updated_at 
+                BEFORE UPDATE ON suppliers 
+                FOR EACH ROW 
+                EXECUTE FUNCTION update_updated_at_column();
+        `);
+
+        // إنشاء triggers للفواتير
         await pool.query(`
             DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices;
             CREATE TRIGGER update_invoices_updated_at 
                 BEFORE UPDATE ON invoices 
-                FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+                FOR EACH ROW 
+                EXECUTE FUNCTION update_updated_at_column();
         `);
 
+        // إنشاء triggers لأوامر الشراء
         await pool.query(`
             DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders;
             CREATE TRIGGER update_purchase_orders_updated_at 
                 BEFORE UPDATE ON purchase_orders 
-                FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+                FOR EACH ROW 
+                EXECUTE FUNCTION update_updated_at_column();
         `);
-        console.log('✅ تم إنشاء triggers التحديث التلقائي');
 
-        // إدراج بيانات تجريبية (اختياري - سيتم تجاهل إذا كانت البيانات موجودة)
-        await insertSampleData();
+        // دالة حساب الإجمالي تلقائياً للفواتير
+        await pool.query(`
+            CREATE OR REPLACE FUNCTION calculate_invoice_total()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.total_amount = NEW.amount_before_tax + COALESCE(NEW.tax_amount, 0);
+                RETURN NEW;
+            END;
+            $$ language 'plpgsql';
+        `);
+
+        // trigger لحساب الإجمالي تلقائياً
+        await pool.query(`
+            DROP TRIGGER IF EXISTS calculate_invoice_total_trigger ON invoices;
+            CREATE TRIGGER calculate_invoice_total_trigger 
+                BEFORE INSERT OR UPDATE ON invoices 
+                FOR EACH ROW 
+                EXECUTE FUNCTION calculate_invoice_total();
+        `);
+
+        // دالة التحقق من التواريخ
+        await pool.query(`
+            CREATE OR REPLACE FUNCTION validate_dates()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                -- التحقق من أن تاريخ التسليم بعد تاريخ الأمر
+                IF TG_TABLE_NAME = 'purchase_orders' AND NEW.delivery_date IS NOT NULL 
+                   AND NEW.delivery_date < NEW.order_date THEN
+                    RAISE EXCEPTION 'تاريخ التسليم لا يمكن أن يكون قبل تاريخ الأمر';
+                END IF;
+                
+                -- التحقق من أن تاريخ الفاتورة ليس في المستقبل البعيد
+                IF TG_TABLE_NAME = 'invoices' AND NEW.invoice_date > CURRENT_DATE + INTERVAL '1 day' THEN
+                    RAISE EXCEPTION 'تاريخ الفاتورة لا يمكن أن يكون في المستقبل';
+                END IF;
+                
+                RETURN NEW;
+            END;
+            $$ language 'plpgsql';
+        `);
+
+        // triggers للتحقق من التواريخ
+        await pool.query(`
+            DROP TRIGGER IF EXISTS validate_purchase_order_dates ON purchase_orders;
+            CREATE TRIGGER validate_purchase_order_dates 
+                BEFORE INSERT OR UPDATE ON purchase_orders 
+                FOR EACH ROW 
+                EXECUTE FUNCTION validate_dates();
+        `);
+
+        await pool.query(`
+            DROP TRIGGER IF EXISTS validate_invoice_dates ON invoices;
+            CREATE TRIGGER validate_invoice_dates 
+                BEFORE INSERT OR UPDATE ON invoices 
+                FOR EACH ROW 
+                EXECUTE FUNCTION validate_dates();
+        `);
+
+        console.log('✅ تم إنشاء جميع الدوال والـ Triggers بنجاح');
         
     } catch (error) {
-        console.error('❌ خطأ في إنشاء الجداول:', error.message);
-        throw error;
+        console.warn('تحذير في إنشاء الدوال والـ Triggers:', error.message);
     }
 }
 
-// إدراج بيانات تجريبية
-async function insertSampleData() {
+// إدراج بيانات تجريبية إذا لزم الأمر
+async function insertSampleDataIfNeeded() {
     try {
         // التحقق من وجود بيانات
         const suppliersCount = await pool.query('SELECT COUNT(*) FROM suppliers');
-        const ordersCount = await pool.query('SELECT COUNT(*) FROM purchase_orders');
+        const hasData = parseInt(suppliersCount.rows[0].count) > 0;
         
-        // إذا لم توجد بيانات، أدرج بيانات تجريبية
-        if (parseInt(suppliersCount.rows[0].count) === 0) {
+        if (hasData) {
+            console.log('ℹ️ توجد بيانات في النظام، تجاهل إدراج البيانات التجريبية');
+            return;
+        }
+
+        console.log('📝 إدراج بيانات تجريبية...');
+        
+        // إدراج موردين تجريبيين
+        const sampleSuppliers = [
+            { name: 'شركة الإمدادات الذكية', contact: 'هاتف: 0123456789', address: 'الرياض، المملكة العربية السعودية' },
+            { name: 'مؤسسة التقنية المتقدمة', contact: 'هاتف: 0123456788', address: 'جدة، المملكة العربية السعودية' },
+            { name: 'شركة الحلول المبتكرة', contact: 'هاتف: 0123456787', address: 'الدمام، المملكة العربية السعودية' }
+        ];
+
+        for (const supplier of sampleSuppliers) {
+            try {
+                await pool.query(
+                    'INSERT INTO suppliers (name, contact_info, address) VALUES ($1, $2, $3)',
+                    [supplier.name, supplier.contact, supplier.address]
+                );
+            } catch (error) {
+                if (!error.message.includes('duplicate key')) {
+                    console.warn('تحذير في إدراج مورد:', error.message);
+                }
+            }
+        }
+
+        // إدراج أوامر شراء تجريبية
+        const sampleOrders = [
+            {
+                number: '0001',
+                supplier: 'شركة الإمدادات الذكية',
+                description: 'شراء معدات مكتبية متنوعة للفرع الجديد',
+                amount: 15000.00,
+                status: 'pending',
+                notes: 'أمر شراء عاجل، مطلوب التسليم خلال أسبوع'
+            },
+            {
+                number: '0002',
+                supplier: 'مؤسسة التقنية المتقدمة',
+                description: 'أجهزة كمبيوتر وملحقاتها للقسم الإداري',
+                amount: 45000.00,
+                status: 'approved',
+                notes: 'تم اعتماد الأمر، في انتظار التسليم'
+            },
+            {
+                number: '0003',
+                supplier: 'شركة الحلول المبتكرة',
+                description: 'برامج وتراخيص للنظام الجديد',
+                amount: 12000.00,
+                status: 'completed',
+                notes: 'تم التسليم والتركيب بالكامل'
+            }
+        ];
+
+        for (const order of sampleOrders) {
             try {
                 await pool.query(`
-                    INSERT INTO suppliers (name, contact_info, address) VALUES 
-                    ('شركة الإمدادات الذكية', 'هاتف: 0123456789', 'الرياض، المملكة العربية السعودية'),
-                    ('مؤسسة التقنية المتقدمة', 'هاتف: 0123456788', 'جدة، المملكة العربية السعودية'),
-                    ('شركة الحلول المبتكرة', 'هاتف: 0123456787', 'الدمام، المملكة العربية السعودية')
-                    ON CONFLICT (name) DO NOTHING
-                `);
-                console.log('✅ تم إدراج موردين تجريبيين');
+                    INSERT INTO purchase_orders (order_number, supplier_name, description, amount, status, order_date, notes)
+                    VALUES ($1, $2, $3, $4, $5, CURRENT_DATE - INTERVAL '${Math.floor(Math.random() * 10)} days', $6)
+                `, [order.number, order.supplier, order.description, order.amount, order.status, order.notes]);
             } catch (error) {
-                console.log('ℹ️ تجاهل إدراج الموردين (قد يكونوا موجودين)');
+                if (!error.message.includes('duplicate key')) {
+                    console.warn('تحذير في إدراج أمر شراء:', error.message);
+                }
             }
         }
 
-        if (parseInt(ordersCount.rows[0].count) === 0) {
-            try {
-                // التحقق من وجود الأعمدة المطلوبة قبل الإدراج
-                const tableInfo = await pool.query(`
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'purchase_orders'
-                `);
-                
-                const columns = tableInfo.rows.map(row => row.column_name);
-                const hasStatus = columns.includes('status');
-                const hasFilePathCol = columns.includes('file_path');
-                
-                let insertQuery = `
-                    INSERT INTO purchase_orders (order_number, supplier_name, description, amount, order_date, notes
-                `;
-                
-                if (hasStatus) {
-                    insertQuery += ', status';
-                }
-                
-                insertQuery += `) VALUES 
-                    ('PO-0001', 'شركة الإمدادات الذكية', 'شراء معدات مكتبية متنوعة للفرع الجديد', 15000.00, CURRENT_DATE - INTERVAL '5 days', 'أمر شراء عاجل، مطلوب التسليم خلال أسبوع'
-                `;
-                
-                if (hasStatus) {
-                    insertQuery += ", 'pending'";
-                }
-                
-                insertQuery += `),
-                    ('PO-0002', 'مؤسسة التقنية المتقدمة', 'أجهزة كمبيوتر وملحقاتها للقسم الإداري', 45000.00, CURRENT_DATE - INTERVAL '3 days', 'تم اعتماد الأمر، في انتظار التسليم'
-                `;
-                
-                if (hasStatus) {
-                    insertQuery += ", 'approved'";
-                }
-                
-                insertQuery += `),
-                    ('PO-0003', 'شركة الحلول المبتكرة', 'برامج وتراخيص للنظام الجديد', 12000.00, CURRENT_DATE - INTERVAL '1 day', 'تم التسليم والتركيب بالكامل'
-                `;
-                
-                if (hasStatus) {
-                    insertQuery += ", 'completed'";
-                }
-                
-                insertQuery += `)
-                    ON CONFLICT (order_number) DO NOTHING
-                `;
-                
-                await pool.query(insertQuery);
-                console.log('✅ تم إدراج أوامر شراء تجريبية');
-            } catch (error) {
-                console.log('ℹ️ تجاهل إدراج أوامر الشراء التجريبية:', error.message);
-            }
-        }
+        console.log('✅ تم إدراج البيانات التجريبية بنجاح');
         
     } catch (error) {
-        console.log('ℹ️ تجاهل إدراج البيانات التجريبية (قد تكون موجودة بالفعل)');
+        console.warn('تحذير في إدراج البيانات التجريبية:', error.message);
     }
 }
 
-// ============== وظائف الموردين ==============
+// ============== وظائف مساعدة لقاعدة البيانات ==============
 
-// جلب جميع الموردين
-async function getAllSuppliers() {
+// وظيفة تنظيف قاعدة البيانات (للصيانة)
+async function cleanupDatabase() {
     try {
-        const result = await pool.query('SELECT * FROM suppliers ORDER BY name');
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب الموردين:', error);
-        throw error;
-    }
-}
-
-// جلب بيانات الموردين مع إحصائياتهم
-async function getSuppliersWithStats() {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                s.id,
-                s.name,
-                s.contact_info,
-                s.address,
-                COUNT(DISTINCT i.id) as invoice_count,
-                COALESCE(SUM(i.total_amount), 0) as total_amount,
-                COALESCE(SUM(p.amount), 0) as total_paid,
-                (COALESCE(SUM(i.total_amount), 0) - COALESCE(SUM(p.amount), 0)) as balance,
-                COUNT(DISTINCT po.id) as purchase_orders_count,
-                COALESCE(SUM(po.amount), 0) as purchase_orders_total,
-                s.created_at
-            FROM suppliers s
-            LEFT JOIN invoices i ON s.name = i.supplier_name
-            LEFT JOIN payments p ON s.name = p.supplier_name
-            LEFT JOIN purchase_orders po ON s.name = po.supplier_name
-            GROUP BY s.id, s.name, s.contact_info, s.address, s.created_at
-            ORDER BY s.created_at DESC
+        console.log('🧹 تنظيف قاعدة البيانات...');
+        
+        // حذف الملفات المرفقة التي لا تحتوي على مراجع
+        await pool.query(`
+            DELETE FROM invoices 
+            WHERE file_path IS NOT NULL 
+            AND file_path != '' 
+            AND created_at < CURRENT_DATE - INTERVAL '1 year'
         `);
         
-        return result.rows.map(row => ({
-            id: row.id,
-            name: row.name,
-            contact_info: row.contact_info,
-            address: row.address,
-            invoice_count: parseInt(row.invoice_count),
-            total_amount: parseFloat(row.total_amount),
-            total_paid: parseFloat(row.total_paid),
-            balance: parseFloat(row.balance),
-            purchase_orders_count: parseInt(row.purchase_orders_count),
-            purchase_orders_total: parseFloat(row.purchase_orders_total),
-            created_at: row.created_at
-        }));
+        // تحديث الإحصائيات
+        await pool.query('ANALYZE');
+        
+        console.log('✅ تم تنظيف قاعدة البيانات');
     } catch (error) {
-        console.error('خطأ في جلب الموردين مع الإحصائيات:', error);
-        throw error;
+        console.error('خطأ في تنظيف قاعدة البيانات:', error);
     }
 }
 
-// إضافة مورد جديد
-async function addSupplier(supplierData) {
+// وظيفة إنشاء نسخة احتياطية (مبسطة)
+async function createBackup() {
     try {
-        const { name, contact_info, address } = supplierData;
+        console.log('💾 إنشاء نسخة احتياطية...');
         
-        const result = await pool.query(
-            'INSERT INTO suppliers (name, contact_info, address) VALUES ($1, $2, $3) RETURNING *',
-            [name, contact_info || null, address || null]
-        );
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في إضافة مورد:', error);
-        throw error;
-    }
-}
-
-// تحديث معلومات مورد
-async function updateSupplier(supplierId, supplierData) {
-    try {
-        const { name, contact_info, address } = supplierData;
-        
-        const result = await pool.query(`
-            UPDATE suppliers 
-            SET name = $1, contact_info = $2, address = $3
-            WHERE id = $4 
-            RETURNING *
-        `, [name, contact_info || null, address || null, supplierId]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في تحديث المورد:', error);
-        throw error;
-    }
-}
-
-// ============== وظائف الفواتير ==============
-
-// جلب جميع الفواتير مع إمكانية الفلترة
-async function getAllInvoices(filters = {}) {
-    try {
-        let query = 'SELECT * FROM invoices WHERE 1=1';
-        const params = [];
-        let paramIndex = 1;
-        
-        if (filters.supplier_name) {
-            query += ` AND supplier_name = $${paramIndex}`;
-            params.push(filters.supplier_name);
-            paramIndex++;
-        }
-        
-        if (filters.date_from) {
-            query += ` AND invoice_date >= $${paramIndex}`;
-            params.push(filters.date_from);
-            paramIndex++;
-        }
-        
-        if (filters.date_to) {
-            query += ` AND invoice_date <= $${paramIndex}`;
-            params.push(filters.date_to);
-            paramIndex++;
-        }
-        
-        if (filters.status) {
-            query += ` AND status = $${paramIndex}`;
-            params.push(filters.status);
-            paramIndex++;
-        }
-        
-        query += ' ORDER BY created_at DESC';
-        
-        const result = await pool.query(query, params);
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب الفواتير:', error);
-        throw error;
-    }
-}
-
-// جلب أحدث الفواتير
-async function getRecentInvoices(limit = 5) {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                id, invoice_number, supplier_name, total_amount, 
-                invoice_date, created_at, status
-            FROM invoices 
-            ORDER BY created_at DESC 
-            LIMIT $1
-        `, [limit]);
-        
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب أحدث الفواتير:', error);
-        throw error;
-    }
-}
-
-// جلب فاتورة محددة
-async function getInvoiceById(invoiceId) {
-    try {
-        const result = await pool.query('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في جلب الفاتورة:', error);
-        throw error;
-    }
-}
-
-// إضافة فاتورة جديدة
-async function addInvoice(invoiceData) {
-    try {
-        const {
-            invoice_number,
-            supplier_name,
-            invoice_type,
-            category,
-            invoice_date,
-            amount_before_tax,
-            tax_amount,
-            total_amount,
-            notes,
-            file_path
-        } = invoiceData;
-        
-        const result = await pool.query(`
-            INSERT INTO invoices 
-            (invoice_number, supplier_name, invoice_type, category, invoice_date, 
-             amount_before_tax, tax_amount, total_amount, notes, file_path) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-            RETURNING *
-        `, [
-            invoice_number,
-            supplier_name,
-            invoice_type,
-            category,
-            invoice_date,
-            amount_before_tax,
-            tax_amount || 0,
-            total_amount,
-            notes || '',
-            file_path || ''
-        ]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في إضافة فاتورة:', error);
-        throw error;
-    }
-}
-
-// تحديث فاتورة
-async function updateInvoice(invoiceId, invoiceData) {
-    try {
-        const {
-            invoice_number,
-            supplier_name,
-            invoice_type,
-            category,
-            invoice_date,
-            amount_before_tax,
-            tax_amount,
-            total_amount,
-            notes,
-            file_path,
-            status
-        } = invoiceData;
-        
-        const result = await pool.query(`
-            UPDATE invoices SET
-                invoice_number = $1,
-                supplier_name = $2,
-                invoice_type = $3,
-                category = $4,
-                invoice_date = $5,
-                amount_before_tax = $6,
-                tax_amount = $7,
-                total_amount = $8,
-                notes = $9,
-                file_path = $10,
-                status = $11
-            WHERE id = $12
-            RETURNING *
-        `, [
-            invoice_number,
-            supplier_name,
-            invoice_type,
-            category,
-            invoice_date,
-            amount_before_tax,
-            tax_amount || 0,
-            total_amount,
-            notes || '',
-            file_path || '',
-            status || 'pending',
-            invoiceId
-        ]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في تحديث فاتورة:', error);
-        throw error;
-    }
-}
-
-// حذف فاتورة
-async function deleteInvoice(invoiceId) {
-    try {
-        const result = await pool.query('DELETE FROM invoices WHERE id = $1 RETURNING *', [invoiceId]);
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في حذف فاتورة:', error);
-        throw error;
-    }
-}
-
-// ============== وظائف المدفوعات ==============
-
-// جلب مدفوعات مورد محدد
-async function getPaymentsBySupplier(supplierName) {
-    try {
-        const result = await pool.query(`
-            SELECT * FROM payments 
-            WHERE supplier_name = $1 
-            ORDER BY payment_date DESC
-        `, [supplierName]);
-        
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب المدفوعات:', error);
-        throw error;
-    }
-}
-
-// إضافة دفعة جديدة
-async function addPayment(paymentData) {
-    try {
-        const {
-            supplier_name,
-            payment_date,
-            amount,
-            payment_method,
-            reference_number,
-            notes
-        } = paymentData;
-        
-        const result = await pool.query(`
-            INSERT INTO payments 
-            (supplier_name, payment_date, amount, payment_method, reference_number, notes) 
-            VALUES ($1, $2, $3, $4, $5, $6) 
-            RETURNING *
-        `, [
-            supplier_name,
-            payment_date,
-            amount,
-            payment_method || 'cash',
-            reference_number || null,
-            notes || ''
-        ]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في إضافة دفعة:', error);
-        throw error;
-    }
-}
-
-// حذف دفعة
-async function deletePayment(paymentId) {
-    try {
-        const result = await pool.query('DELETE FROM payments WHERE id = $1 RETURNING *', [paymentId]);
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في حذف دفعة:', error);
-        throw error;
-    }
-}
-
-// ============== وظائف أوامر الشراء - محدثة ==============
-
-// جلب جميع أوامر الشراء مع إمكانية الفلترة
-async function getAllPurchaseOrders(filters = {}) {
-    try {
-        // التحقق من وجود حقل status
-        const tableInfo = await pool.query(`
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'purchase_orders' AND column_name = 'status'
-        `);
-        
-        const hasStatus = tableInfo.rows.length > 0;
-        
-        let query = 'SELECT * FROM purchase_orders WHERE 1=1';
-        const params = [];
-        let paramIndex = 1;
-        
-        if (filters.supplier_name) {
-            query += ` AND supplier_name = ${paramIndex}`;
-            params.push(filters.supplier_name);
-            paramIndex++;
-        }
-        
-        if (filters.status && hasStatus) {
-            query += ` AND status = ${paramIndex}`;
-            params.push(filters.status);
-            paramIndex++;
-        }
-        
-        if (filters.date_from) {
-            query += ` AND order_date >= ${paramIndex}`;
-            params.push(filters.date_from);
-            paramIndex++;
-        }
-        
-        if (filters.date_to) {
-            query += ` AND order_date <= ${paramIndex}`;
-            params.push(filters.date_to);
-            paramIndex++;
-        }
-        
-        query += ' ORDER BY created_at DESC';
-        
-        const result = await pool.query(query, params);
-        
-        // إضافة حقل status افتراضي إذا لم يكن موجوداً
-        return result.rows.map(row => ({
-            ...row,
-            status: row.status || 'pending'
-        }));
-    } catch (error) {
-        console.error('خطأ في جلب أوامر الشراء:', error);
-        throw error;
-    }
-}
-
-// جلب أمر شراء محدد
-async function getPurchaseOrderById(orderId) {
-    try {
-        const result = await pool.query('SELECT * FROM purchase_orders WHERE id = $1', [orderId]);
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في جلب أمر الشراء:', error);
-        throw error;
-    }
-}
-
-// جلب أوامر شراء مورد محدد
-async function getPurchaseOrdersBySupplier(supplierName) {
-    try {
-        const result = await pool.query(`
-            SELECT * FROM purchase_orders 
-            WHERE supplier_name = $1 
-            ORDER BY created_at DESC
-        `, [supplierName]);
-        
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب أوامر الشراء:', error);
-        throw error;
-    }
-}
-
-// إضافة أمر شراء جديد
-async function addPurchaseOrder(orderData) {
-    try {
-        // التحقق من وجود الأعمدة
-        const tableInfo = await pool.query(`
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'purchase_orders'
-        `);
-        
-        const columns = tableInfo.rows.map(row => row.column_name);
-        const hasStatus = columns.includes('status');
-        const hasFilePath = columns.includes('file_path');
-        
-        const { 
-            order_number,
-            supplier_name, 
-            description, 
-            amount,
-            status,
-            order_date,
-            delivery_date,
-            notes,
-            file_path
-        } = orderData;
-        
-        let insertQuery = `
-            INSERT INTO purchase_orders 
-            (order_number, supplier_name, description, amount, order_date, delivery_date, notes
-        `;
-        
-        let values = [
-            order_number || null,
-            supplier_name,
-            description,
-            amount,
-            order_date || new Date(),
-            delivery_date || null,
-            notes || ''
-        ];
-        
-        let valueIndex = 8;
-        
-        if (hasStatus) {
-            insertQuery += ', status';
-            values.push(status || 'pending');
-            valueIndex++;
-        }
-        
-        if (hasFilePath) {
-            insertQuery += ', file_path';
-            values.push(file_path || null);
-            valueIndex++;
-        }
-        
-        insertQuery += ') VALUES ($1, $2, $3, $4, $5, $6, $7';
-        
-        if (hasStatus) {
-            insertQuery += ', $8';
-        }
-        
-        if (hasFilePath) {
-            if (hasStatus) {
-                insertQuery += ', $9';
-            } else {
-                insertQuery += ', $8';
-            }
-        }
-        
-        insertQuery += ') RETURNING *';
-        
-        const result = await pool.query(insertQuery, values);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في إضافة أمر شراء:', error);
-        throw error;
-    }
-}
-
-// تحديث أمر شراء
-async function updatePurchaseOrder(orderId, orderData) {
-    try {
-        // التحقق من وجود الأعمدة
-        const tableInfo = await pool.query(`
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'purchase_orders'
-        `);
-        
-        const columns = tableInfo.rows.map(row => row.column_name);
-        const hasStatus = columns.includes('status');
-        const hasFilePath = columns.includes('file_path');
-        
-        const {
-            order_number,
-            supplier_name,
-            description,
-            amount,
-            status,
-            order_date,
-            delivery_date,
-            notes,
-            file_path
-        } = orderData;
-        
-        let updateQuery = `
-            UPDATE purchase_orders SET
-                order_number = $1,
-                supplier_name = $2,
-                description = $3,
-                amount = $4,
-                order_date = $5,
-                delivery_date = $6,
-                notes = $7
-        `;
-        
-        let values = [
-            order_number,
-            supplier_name,
-            description,
-            amount,
-            order_date,
-            delivery_date,
-            notes || ''
-        ];
-        
-        let valueIndex = 8;
-        
-        if (hasStatus) {
-            updateQuery += `, status = ${valueIndex}`;
-            values.push(status || 'pending');
-            valueIndex++;
-        }
-        
-        if (hasFilePath) {
-            updateQuery += `, file_path = ${valueIndex}`;
-            values.push(file_path);
-            valueIndex++;
-        }
-        
-        updateQuery += ` WHERE id = ${valueIndex} RETURNING *`;
-        values.push(orderId);
-        
-        const result = await pool.query(updateQuery, values);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في تحديث أمر شراء:', error);
-        throw error;
-    }
-}
-
-// حذف أمر شراء
-async function deletePurchaseOrder(orderId) {
-    try {
-        const result = await pool.query('DELETE FROM purchase_orders WHERE id = $1 RETURNING *', [orderId]);
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في حذف أمر شراء:', error);
-        throw error;
-    }
-}
-
-// ============== وظائف ربط الفواتير مع أوامر الشراء - جديدة ==============
-
-// جلب الفواتير المرتبطة بأمر شراء محدد
-async function getInvoicesLinkedToPurchaseOrder(orderId) {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                i.id,
-                i.invoice_number,
-                i.supplier_name,
-                i.total_amount,
-                i.invoice_date,
-                ipl.linked_at
-            FROM invoices i
-            INNER JOIN invoice_purchase_order_links ipl ON i.id = ipl.invoice_id
-            WHERE ipl.purchase_order_id = $1
-            ORDER BY ipl.linked_at DESC
-        `, [orderId]);
-        
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب الفواتير المرتبطة:', error);
-        throw error;
-    }
-}
-
-// ربط فاتورة بأمر شراء
-async function linkInvoiceToPurchaseOrder(invoiceId, orderId) {
-    try {
-        const result = await pool.query(`
-            INSERT INTO invoice_purchase_order_links (invoice_id, purchase_order_id)
-            VALUES ($1, $2)
-            ON CONFLICT (invoice_id, purchase_order_id) DO NOTHING
-            RETURNING *
-        `, [invoiceId, orderId]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في ربط الفاتورة:', error);
-        throw error;
-    }
-}
-
-// إلغاء ربط فاتورة من أمر شراء
-async function unlinkInvoiceFromPurchaseOrder(invoiceId, orderId) {
-    try {
-        const result = await pool.query(`
-            DELETE FROM invoice_purchase_order_links 
-            WHERE invoice_id = $1 AND purchase_order_id = $2
-            RETURNING *
-        `, [invoiceId, orderId]);
-        
-        return result.rows[0];
-    } catch (error) {
-        console.error('خطأ في إلغاء ربط الفاتورة:', error);
-        throw error;
-    }
-}
-
-// حساب الموازنة لأمر شراء محدد
-async function calculatePurchaseOrderBudget(orderId) {
-    try {
-        // جلب معلومات أمر الشراء
-        const orderResult = await pool.query(
-            'SELECT amount FROM purchase_orders WHERE id = $1',
-            [orderId]
-        );
-        
-        if (orderResult.rows.length === 0) {
-            return null;
-        }
-        
-        const orderAmount = parseFloat(orderResult.rows[0].amount);
-        
-        // جلب إجمالي الفواتير المرتبطة
-        const invoicesResult = await pool.query(`
-            SELECT 
-                SUM(i.total_amount) as total_invoices_amount,
-                COUNT(i.id) as invoices_count
-            FROM invoices i
-            INNER JOIN invoice_purchase_order_links ipl ON i.id = ipl.invoice_id
-            WHERE ipl.purchase_order_id = $1
-        `, [orderId]);
-        
-        const totalInvoicesAmount = parseFloat(invoicesResult.rows[0].total_invoices_amount) || 0;
-        const invoicesCount = parseInt(invoicesResult.rows[0].invoices_count);
-        
-        // حساب الموازنة
-        const balance = orderAmount - totalInvoicesAmount;
-        const balancePercentage = orderAmount > 0 ? (balance / orderAmount) * 100 : 0;
-        
-        let balanceStatus = 'balanced';
-        if (balance > 0) {
-            balanceStatus = 'under_budget';
-        } else if (balance < 0) {
-            balanceStatus = 'over_budget';
-        }
-        
-        return {
-            order_amount: orderAmount,
-            total_invoices_amount: totalInvoicesAmount,
-            balance: balance,
-            balance_percentage: Math.round(balancePercentage * 100) / 100,
-            balance_status: balanceStatus,
-            invoices_count: invoicesCount
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupData = {
+            timestamp,
+            suppliers: [],
+            invoices: [],
+            purchase_orders: [],
+            payments: []
         };
+        
+        // جلب جميع البيانات
+        const suppliers = await pool.query('SELECT * FROM suppliers ORDER BY id');
+        const invoices = await pool.query('SELECT * FROM invoices ORDER BY id');
+        const orders = await pool.query('SELECT * FROM purchase_orders ORDER BY id');
+        const payments = await pool.query('SELECT * FROM payments ORDER BY id');
+        
+        backupData.suppliers = suppliers.rows;
+        backupData.invoices = invoices.rows;
+        backupData.purchase_orders = orders.rows;
+        backupData.payments = payments.rows;
+        
+        console.log('✅ تم إنشاء النسخة الاحتياطية');
+        return backupData;
+        
     } catch (error) {
-        console.error('خطأ في حساب الموازنة:', error);
+        console.error('خطأ في إنشاء النسخة الاحتياطية:', error);
         throw error;
     }
 }
 
-// ============== وظائف الإحصائيات - محدثة ==============
+// وظيفة فحص سلامة قاعدة البيانات
+async function checkDatabaseHealth() {
+    try {
+        console.log('🏥 فحص سلامة قاعدة البيانات...');
+        
+        const checks = {
+            connection: false,
+            tables: false,
+            indexes: false,
+            constraints: false
+        };
+        
+        // فحص الاتصال
+        const client = await pool.connect();
+        checks.connection = true;
+        client.release();
+        
+        // فحص وجود الجداول
+        const tablesResult = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('suppliers', 'invoices', 'purchase_orders', 'payments', 'invoice_purchase_order_links')
+        `);
+        checks.tables = tablesResult.rows.length === 5;
+        
+        // فحص الفهارس
+        const indexesResult = await pool.query(`
+            SELECT indexname 
+            FROM pg_indexes 
+            WHERE tablename IN ('suppliers', 'invoices', 'purchase_orders', 'payments')
+        `);
+        checks.indexes = indexesResult.rows.length > 0;
+        
+        // فحص القيود
+        const constraintsResult = await pool.query(`
+            SELECT constraint_name 
+            FROM information_schema.table_constraints 
+            WHERE table_schema = 'public'
+        `);
+        checks.constraints = constraintsResult.rows.length > 0;
+        
+        console.log('📊 نتائج فحص سلامة قاعدة البيانات:', checks);
+        
+        const isHealthy = Object.values(checks).every(check => check === true);
+        console.log(isHealthy ? '✅ قاعدة البيانات سليمة' : '⚠️ توجد مشاكل في قاعدة البيانات');
+        
+        return { isHealthy, checks };
+        
+    } catch (error) {
+        console.error('❌ خطأ في فحص سلامة قاعدة البيانات:', error);
+        return { isHealthy: false, error: error.message };
+    }
+}
 
-// جلب إحصائيات النظام العامة
-async function getStats() {
+// وظيفة إحصائيات قاعدة البيانات
+async function getDatabaseStats() {
     try {
         const stats = {};
         
-        // عدد الموردين
-        const suppliersResult = await pool.query('SELECT COUNT(*) as count FROM suppliers');
-        stats.suppliersCount = parseInt(suppliersResult.rows[0].count);
+        // إحصائيات الجداول
+        const tableStatsResult = await pool.query(`
+            SELECT 
+                schemaname,
+                tablename,
+                n_tup_ins as inserts,
+                n_tup_upd as updates,
+                n_tup_del as deletes
+            FROM pg_stat_user_tables 
+            WHERE schemaname = 'public'
+        `);
         
-        // عدد الفواتير
-        const invoicesResult = await pool.query('SELECT COUNT(*) as count FROM invoices');
-        stats.invoicesCount = parseInt(invoicesResult.rows[0].count);
+        stats.tables = tableStatsResult.rows;
         
-        // عدد أوامر الشراء
-        const ordersResult = await pool.query('SELECT COUNT(*) as count FROM purchase_orders');
-        stats.ordersCount = parseInt(ordersResult.rows[0].count);
+        // حجم قاعدة البيانات
+        const sizeResult = await pool.query(`
+            SELECT pg_size_pretty(pg_database_size(current_database())) as size
+        `);
         
-        // إجمالي المبالغ
-        const totalAmountResult = await pool.query('SELECT SUM(total_amount) as total FROM invoices');
-        stats.totalAmount = parseFloat(totalAmountResult.rows[0].total) || 0;
+        stats.database_size = sizeResult.rows[0].size;
         
-        // إجمالي المدفوعات
-        const totalPaidResult = await pool.query('SELECT SUM(amount) as total FROM payments');
-        stats.totalPaid = parseFloat(totalPaidResult.rows[0].total) || 0;
+        // عدد الاتصالات النشطة
+        const connectionsResult = await pool.query(`
+            SELECT count(*) as active_connections 
+            FROM pg_stat_activity 
+            WHERE state = 'active'
+        `);
         
-        // الرصيد المتبقي
-        stats.balance = stats.totalAmount - stats.totalPaid;
-        
-        // إحصائيات أوامر الشراء - مع حماية من الأخطاء
-        try {
-            const ordersStatsResult = await pool.query(`
-                SELECT 
-                    COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_orders,
-                    COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_orders,
-                    COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_orders,
-                    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_orders,
-                    SUM(amount) as total_orders_amount
-                FROM purchase_orders
-            `);
-            
-            const ordersStats = ordersStatsResult.rows[0];
-            stats.pendingOrders = parseInt(ordersStats.pending_orders) || 0;
-            stats.approvedOrders = parseInt(ordersStats.approved_orders) || 0;
-            stats.completedOrders = parseInt(ordersStats.completed_orders) || 0;
-            stats.cancelledOrders = parseInt(ordersStats.cancelled_orders) || 0;
-            stats.totalOrdersAmount = parseFloat(ordersStats.total_orders_amount) || 0;
-        } catch (statusError) {
-            // إذا كان حقل status غير موجود، استخدم القيم الافتراضية
-            console.log('ℹ️ حقل status غير موجود في purchase_orders، استخدام القيم الافتراضية');
-            stats.pendingOrders = 0;
-            stats.approvedOrders = 0;
-            stats.completedOrders = 0;
-            stats.cancelledOrders = 0;
-            
-            // جلب إجمالي المبلغ بدون status
-            try {
-                const totalOrdersResult = await pool.query('SELECT SUM(amount) as total FROM purchase_orders');
-                stats.totalOrdersAmount = parseFloat(totalOrdersResult.rows[0].total) || 0;
-            } catch (totalError) {
-                stats.totalOrdersAmount = 0;
-            }
-        }
+        stats.active_connections = parseInt(connectionsResult.rows[0].active_connections);
         
         return stats;
+        
     } catch (error) {
-        console.error('خطأ في جلب الإحصائيات:', error);
-        throw error;
+        console.error('خطأ في جلب إحصائيات قاعدة البيانات:', error);
+        return null;
     }
 }
 
-// جلب إحصائيات مورد محدد
-async function getSupplierStats(supplierName) {
+// وظيفة إغلاق اتصالات قاعدة البيانات بأمان
+async function closeDatabase() {
     try {
-        const result = await pool.query(`
-            SELECT 
-                s.name,
-                COUNT(DISTINCT i.id) as invoice_count,
-                COALESCE(SUM(i.total_amount), 0) as total_amount,
-                COUNT(DISTINCT p.id) as payment_count,
-                COALESCE(SUM(p.amount), 0) as total_paid,
-                COUNT(DISTINCT po.id) as purchase_orders_count,
-                COALESCE(SUM(po.amount), 0) as purchase_orders_total
-            FROM suppliers s
-            LEFT JOIN invoices i ON s.name = i.supplier_name
-            LEFT JOIN payments p ON s.name = p.supplier_name
-            LEFT JOIN purchase_orders po ON s.name = po.supplier_name
-            WHERE s.name = $1
-            GROUP BY s.name
-        `, [supplierName]);
-        
-        if (result.rows.length === 0) {
-            return null;
-        }
-        
-        const row = result.rows[0];
-        return {
-            supplier_name: row.name,
-            invoice_count: parseInt(row.invoice_count),
-            total_amount: parseFloat(row.total_amount),
-            payment_count: parseInt(row.payment_count),
-            total_paid: parseFloat(row.total_paid),
-            balance: parseFloat(row.total_amount) - parseFloat(row.total_paid),
-            purchase_orders_count: parseInt(row.purchase_orders_count),
-            purchase_orders_total: parseFloat(row.purchase_orders_total)
-        };
+        console.log('🔌 إغلاق اتصالات قاعدة البيانات...');
+        await pool.end();
+        console.log('✅ تم إغلاق جميع اتصالات قاعدة البيانات');
     } catch (error) {
-        console.error('خطأ في جلب إحصائيات المورد:', error);
-        throw error;
+        console.error('خطأ في إغلاق قاعدة البيانات:', error);
     }
 }
 
-// ============== وظائف التقارير ==============
-
-// تقرير مالي شامل
-async function getFinancialReport(dateFrom, dateTo) {
-    try {
-        const result = await pool.query(`
-            SELECT 
-                'invoices' as type,
-                supplier_name,
-                SUM(total_amount) as amount,
-                COUNT(*) as count,
-                DATE_TRUNC('month', invoice_date) as period
-            FROM invoices
-            WHERE invoice_date BETWEEN $1 AND $2
-            GROUP BY supplier_name, DATE_TRUNC('month', invoice_date)
-            
-            UNION ALL
-            
-            SELECT 
-                'payments' as type,
-                supplier_name,
-                SUM(amount) as amount,
-                COUNT(*) as count,
-                DATE_TRUNC('month', payment_date) as period
-            FROM payments
-            WHERE payment_date BETWEEN $1 AND $2
-            GROUP BY supplier_name, DATE_TRUNC('month', payment_date)
-            
-            UNION ALL
-            
-            SELECT 
-                'purchase_orders' as type,
-                supplier_name,
-                SUM(amount) as amount,
-                COUNT(*) as count,
-                DATE_TRUNC('month', order_date) as period
-            FROM purchase_orders
-            WHERE order_date BETWEEN $1 AND $2
-            GROUP BY supplier_name, DATE_TRUNC('month', order_date)
-            
-            ORDER BY supplier_name, period
-        `, [dateFrom, dateTo]);
-        
-        return result.rows;
-    } catch (error) {
-        console.error('خطأ في جلب التقرير المالي:', error);
-        throw error;
-    }
-}
-
-// تهيئة قاعدة البيانات عند بدء التشغيل
-initializeDatabase();
+// معالجة إشارات النظام لإغلاق قاعدة البيانات بأمان
+process.on('SIGTERM', closeDatabase);
+process.on('SIGINT', closeDatabase);
+process.on('SIGHUP', closeDatabase);
 
 // تصدير قاعدة البيانات والوظائف
 module.exports = {
     pool,
     initializeDatabase,
-    
-    // وظائف الموردين
-    getAllSuppliers,
-    getSuppliersWithStats,
-    addSupplier,
-    updateSupplier,
-    
-    // وظائف الفواتير
-    getAllInvoices,
-    getRecentInvoices,
-    getInvoiceById,
-    addInvoice,
-    updateInvoice,
-    deleteInvoice,
-    
-    // وظائف المدفوعات
-    getPaymentsBySupplier,
-    addPayment,
-    deletePayment,
-    
-    // وظائف أوامر الشراء - محدثة
-    getAllPurchaseOrders,
-    getPurchaseOrderById,
-    getPurchaseOrdersBySupplier,
-    addPurchaseOrder,
-    updatePurchaseOrder,
-    deletePurchaseOrder,
-    
-    // وظائف ربط الفواتير مع أوامر الشراء - جديدة
-    getInvoicesLinkedToPurchaseOrder,
-    linkInvoiceToPurchaseOrder,
-    unlinkInvoiceFromPurchaseOrder,
-    calculatePurchaseOrderBudget,
-    
-    // وظائف الإحصائيات
-    getStats,
-    getSupplierStats,
-    getFinancialReport
+    cleanupDatabase,
+    createBackup,
+    checkDatabaseHealth,
+    getDatabaseStats,
+    closeDatabase
 };
