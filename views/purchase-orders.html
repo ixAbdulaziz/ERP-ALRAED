@@ -231,6 +231,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
         @media (max-width: 768px) {
             .stats-row {
                 grid-template-columns: 1fr;
@@ -274,6 +279,9 @@
             <h1><i class="fas fa-shopping-cart"></i> إدارة أوامر الشراء</h1>
             <p>إدارة أوامر الشراء بطريقة مبسطة وسهلة</p>
         </div>
+
+        <!-- Alert Area -->
+        <div id="alertArea"></div>
 
         <!-- Statistics Section -->
         <div class="stats-row fade-in">
@@ -399,6 +407,29 @@
                             </div>
                         </div>
 
+                        <!-- إضافة حقول جديدة مطلوبة -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="deliveryDate" class="form-label">تاريخ التسليم</label>
+                                <input type="date" class="form-control" id="deliveryDate" name="deliveryDate">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="orderStatus" class="form-label">حالة الأمر</label>
+                                <select class="form-select" id="orderStatus" name="orderStatus">
+                                    <option value="pending">قيد الانتظار</option>
+                                    <option value="approved">موافق عليه</option>
+                                    <option value="completed">مكتمل</option>
+                                    <option value="cancelled">ملغي</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="orderNotes" class="form-label">ملاحظات</label>
+                            <textarea class="form-control" id="orderNotes" name="orderNotes" 
+                                      rows="2" placeholder="ملاحظات إضافية..."></textarea>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">رفع ملف مرفق (PDF أو صورة)</label>
                             <div class="file-upload-area" onclick="document.getElementById('orderFile').click()">
@@ -439,11 +470,39 @@
             loadPurchaseOrders();
         });
 
+        // Show alert function
+        function showAlert(message, type = 'success') {
+            const alertArea = document.getElementById('alertArea');
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            alertArea.innerHTML = alertHtml;
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = alertArea.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+            
+            // Scroll to alert
+            alertArea.scrollIntoView({ behavior: 'smooth' });
+        }
+
         // Load purchase orders
         async function loadPurchaseOrders() {
             try {
+                console.log('📥 جاري تحميل أوامر الشراء...');
+                
                 const response = await fetch('/api/purchase-orders');
                 const result = await response.json();
+                
+                console.log('📋 استجابة الخادم:', result);
                 
                 if (result.success) {
                     purchaseOrders = result.data || [];
@@ -452,13 +511,15 @@
                     updateStatistics();
                     console.log(`🛒 تم تحميل ${purchaseOrders.length} أمر شراء`);
                 } else {
-                    console.error('خطأ في تحميل أوامر الشراء:', result.message);
+                    console.error('❌ خطأ في تحميل أوامر الشراء:', result.message);
+                    showAlert('خطأ في تحميل أوامر الشراء: ' + result.message, 'danger');
                     purchaseOrders = [];
                     filteredOrders = [];
                     renderOrdersTable();
                 }
             } catch (error) {
-                console.error('خطأ في تحميل أوامر الشراء:', error);
+                console.error('❌ خطأ في تحميل أوامر الشراء:', error);
+                showAlert('خطأ في الاتصال بالخادم: ' + error.message, 'danger');
                 purchaseOrders = [];
                 filteredOrders = [];
                 renderOrdersTable();
@@ -554,6 +615,15 @@
             
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
+                
+                // التحقق من حجم الملف
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlert('حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت', 'danger');
+                    fileInput.value = '';
+                    fileName.style.display = 'none';
+                    return;
+                }
+                
                 const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
                 fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
                 fileName.style.display = 'block';
@@ -565,6 +635,8 @@
             const form = document.getElementById('addOrderForm');
             const formData = new FormData(form);
             
+            console.log('💾 محاولة حفظ أمر شراء جديد...');
+            
             // Validation
             const supplierName = document.getElementById('supplierName').value.trim();
             const orderDescription = document.getElementById('orderDescription').value.trim();
@@ -572,25 +644,41 @@
             const orderDate = document.getElementById('orderDate').value;
             
             if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
-                alert('الرجاء ملء جميع الحقول المطلوبة');
+                showAlert('الرجاء ملء جميع الحقول المطلوبة', 'danger');
                 return;
+            }
+            
+            if (parseFloat(orderAmount) <= 0) {
+                showAlert('يجب أن يكون مبلغ الأمر أكبر من الصفر', 'danger');
+                return;
+            }
+            
+            // طباعة البيانات للتحقق
+            console.log('📝 بيانات النموذج:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
             }
             
             try {
                 const saveBtn = document.querySelector('#addOrderModal .btn-primary');
                 const originalText = saveBtn.textContent;
-                saveBtn.textContent = 'جاري الحفظ...';
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
                 saveBtn.disabled = true;
+                
+                console.log('📡 إرسال طلب إلى الخادم...');
                 
                 const response = await fetch('/api/purchase-orders', {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log('📨 حالة الاستجابة:', response.status);
+                
                 const result = await response.json();
+                console.log('📥 استجابة الخادم:', result);
                 
                 if (result.success) {
-                    alert('تم حفظ أمر الشراء بنجاح!');
+                    showAlert('تم حفظ أمر الشراء بنجاح! 🎉', 'success');
                     bootstrap.Modal.getInstance(document.getElementById('addOrderModal')).hide();
                     form.reset();
                     document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
@@ -598,11 +686,12 @@
                     
                     await loadPurchaseOrders();
                 } else {
-                    alert('خطأ: ' + result.message);
+                    console.error('❌ خطأ من الخادم:', result.message);
+                    showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
-                console.error('خطأ في حفظ أمر الشراء:', error);
-                alert('حدث خطأ في الاتصال بالخادم');
+                console.error('❌ خطأ في حفظ أمر الشراء:', error);
+                showAlert('حدث خطأ في الاتصال بالخادم: ' + error.message, 'danger');
             } finally {
                 const saveBtn = document.querySelector('#addOrderModal .btn-primary');
                 saveBtn.textContent = 'حفظ الأمر';
@@ -616,11 +705,17 @@
             loadPurchaseOrders();
         }
 
-        // Test connection
+        // Test connection on page load
         fetch('/api/test')
             .then(response => response.json())
-            .then(data => console.log('✅ اتصال ناجح بالخادم:', data))
-            .catch(error => console.error('❌ خطأ في الاتصال:', error));
+            .then(data => {
+                console.log('✅ اتصال ناجح بالخادم:', data);
+                showAlert('تم الاتصال بالخادم بنجاح', 'success');
+            })
+            .catch(error => {
+                console.error('❌ خطأ في الاتصال:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
+            });
     </script>
 </body>
 </html>
