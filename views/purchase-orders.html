@@ -62,8 +62,6 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
-            padding-bottom: 10px;
         }
 
         .stats-row {
@@ -80,7 +78,6 @@
             color: white;
             text-align: center;
             transition: all 0.3s ease;
-            cursor: pointer;
         }
 
         .stat-card:hover {
@@ -94,43 +91,24 @@
             font-weight: 700;
         }
 
-        .stat-card p {
-            margin: 10px 0 0 0;
-            font-size: 1rem;
-            opacity: 0.9;
-        }
-
-        .search-filters {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
         .form-control, .form-select {
             border: 2px solid #e9ecef;
             border-radius: 10px;
             padding: 10px 15px;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
         }
 
         .form-control:focus, .form-select:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-            background: rgba(255, 255, 255, 1);
-        }
-
-        .btn {
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            padding: 10px 20px;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
@@ -155,40 +133,7 @@
             border: none;
             font-weight: 600;
             padding: 15px 10px;
-            font-size: 0.85rem;
-            vertical-align: middle;
             text-align: center;
-            cursor: pointer;
-            position: relative;
-            user-select: none;
-        }
-
-        .table thead th.sortable:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
-        }
-
-        .table thead th.sortable::after {
-            content: '\f0dc';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.6;
-            transition: all 0.3s ease;
-        }
-
-        .table thead th.sortable.sort-asc::after {
-            content: '\f0de';
-            opacity: 1;
-            color: #28a745;
-        }
-
-        .table thead th.sortable.sort-desc::after {
-            content: '\f0dd';
-            opacity: 1;
-            color: #dc3545;
         }
 
         .table tbody td {
@@ -201,8 +146,6 @@
 
         .table tbody tr:hover {
             background: rgba(102, 126, 234, 0.05);
-            transform: translateY(-1px);
-            transition: all 0.3s ease;
         }
 
         .amount-cell {
@@ -215,18 +158,6 @@
         .order-number {
             font-weight: 600;
             color: #667eea;
-        }
-
-        .action-btn {
-            margin: 0 2px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
         }
 
         .badge-custom {
@@ -252,19 +183,12 @@
             padding: 30px;
             text-align: center;
             background: rgba(102, 126, 234, 0.05);
-            transition: all 0.3s ease;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         .file-upload-area:hover {
             background: rgba(102, 126, 234, 0.1);
-            border-color: #5a67d8;
-        }
-
-        .file-upload-area i {
-            font-size: 2.5rem;
-            color: #667eea;
-            margin-bottom: 15px;
         }
 
         .empty-state {
@@ -298,14 +222,6 @@
             color: #667eea !important;
         }
 
-        .alert-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            min-width: 300px;
-        }
-
         .fade-in {
             animation: fadeIn 1s ease-in;
         }
@@ -315,51 +231,9 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .autocomplete-container {
-            position: relative;
-        }
-        
-        .autocomplete-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 0 0 10px 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
-        
-        .autocomplete-suggestion {
-            padding: 12px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .autocomplete-suggestion:hover {
-            background: rgba(102, 126, 234, 0.1);
-        }
-
         @media (max-width: 768px) {
-            .main-container {
-                padding: 15px;
-            }
-            
             .stats-row {
                 grid-template-columns: 1fr;
-            }
-            
-            .table thead th, .table tbody td {
-                padding: 8px 5px;
-                font-size: 0.8rem;
-            }
-            
-            .action-btn {
-                padding: 4px 6px;
-                font-size: 0.7rem;
             }
         }
     </style>
@@ -401,9 +275,6 @@
             <p>إدارة أوامر الشراء بطريقة مبسطة وسهلة</p>
         </div>
 
-        <!-- Alert Container -->
-        <div class="alert-container" id="alertContainer"></div>
-
         <!-- Statistics Section -->
         <div class="stats-row fade-in">
             <div class="stat-card">
@@ -431,21 +302,16 @@
                 </div>
             </div>
 
-            <div class="search-filters">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="supplierSearch" class="form-label">البحث بالمورد</label>
-                        <input type="text" class="form-control" id="supplierSearch" 
-                               placeholder="اسم المورد..." onkeyup="filterOrders()">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="dateFrom" class="form-label">من تاريخ</label>
-                        <input type="date" class="form-control" id="dateFrom" onchange="filterOrders()">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label for="dateTo" class="form-label">إلى تاريخ</label>
-                        <input type="date" class="form-control" id="dateTo" onchange="filterOrders()">
-                    </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <input type="text" class="form-control" id="supplierSearch" 
+                           placeholder="البحث بالمورد..." onkeyup="filterOrders()">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <input type="date" class="form-control" id="dateFrom" onchange="filterOrders()">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <input type="date" class="form-control" id="dateTo" onchange="filterOrders()">
                 </div>
             </div>
         </div>
@@ -464,23 +330,12 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th class="sortable" data-column="order_number" onclick="sortTable('order_number')">
-                                رقم الأمر <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="supplier_name" onclick="sortTable('supplier_name')">
-                                المورد <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="description" onclick="sortTable('description')">
-                                البيان <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="amount" onclick="sortTable('amount')">
-                                المبلغ <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="order_date" onclick="sortTable('order_date')">
-                                التاريخ <i class="fas fa-sort"></i>
-                            </th>
+                            <th>رقم الأمر</th>
+                            <th>المورد</th>
+                            <th>البيان</th>
+                            <th>المبلغ</th>
+                            <th>التاريخ</th>
                             <th>المرفق</th>
-                            <th>الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="ordersTableBody">
@@ -511,7 +366,6 @@
                 </div>
                 <div class="modal-body">
                     <form id="addOrderForm" enctype="multipart/form-data">
-                        <!-- إشعار رقم الأمر التلقائي -->
                         <div class="alert alert-info text-center mb-4">
                             <i class="fas fa-info-circle me-2"></i>
                             سيتم إنشاء رقم الأمر تلقائياً (مثال: 0001, 0002, 0003...)
@@ -520,11 +374,8 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="supplierName" class="form-label">اسم المورد *</label>
-                                <div class="autocomplete-container">
-                                    <input type="text" class="form-control" id="supplierName" name="supplierName" 
-                                           placeholder="اسم المورد..." required autocomplete="off">
-                                    <div class="autocomplete-suggestions" id="supplierSuggestions"></div>
-                                </div>
+                                <input type="text" class="form-control" id="supplierName" name="supplierName" 
+                                       placeholder="اسم المورد..." required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="orderDate" class="form-label">تاريخ الأمر *</label>
@@ -551,7 +402,7 @@
                         <div class="mb-3">
                             <label class="form-label">رفع ملف مرفق (PDF أو صورة)</label>
                             <div class="file-upload-area" onclick="document.getElementById('orderFile').click()">
-                                <i class="fas fa-cloud-upload-alt"></i>
+                                <i class="fas fa-cloud-upload-alt fa-2x mb-2"></i>
                                 <h6>انقر لرفع ملف PDF أو صورة</h6>
                                 <p class="text-muted mb-0">PDF, JPG, PNG (الحد الأقصى: 5 ميجابايت)</p>
                                 <input type="file" id="orderFile" name="orderFile" accept=".pdf,.jpg,.jpeg,.png" 
@@ -569,119 +420,6 @@
         </div>
     </div>
 
-    <!-- Edit Purchase Order Modal -->
-    <div class="modal fade" id="editOrderModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i> تحرير أمر الشراء</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editOrderForm" enctype="multipart/form-data">
-                        <input type="hidden" id="editOrderId">
-                        
-                        <!-- عرض رقم الأمر الحالي -->
-                        <div class="alert alert-info text-center mb-4">
-                            <i class="fas fa-info-circle me-2"></i>
-                            رقم الأمر: <strong id="displayOrderNumber">-</strong>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="editSupplierName" class="form-label">اسم المورد *</label>
-                                <input type="text" class="form-control" id="editSupplierName" name="editSupplierName" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editOrderDate" class="form-label">تاريخ الأمر *</label>
-                                <input type="date" class="form-control" id="editOrderDate" name="editOrderDate" required>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="editOrderDescription" class="form-label">البيان *</label>
-                            <textarea class="form-control" id="editOrderDescription" name="editOrderDescription" 
-                                      rows="3" required></textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="editOrderAmount" class="form-label">مبلغ أمر الشراء *</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-money-bill"></i></span>
-                                <input type="number" class="form-control" id="editOrderAmount" name="editOrderAmount" 
-                                       step="0.01" min="0" required>
-                                <span class="input-group-text">ريال</span>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">تحديث الملف المرفق</label>
-                            <div class="file-upload-area" onclick="document.getElementById('editOrderFile').click()">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <h6>انقر لرفع ملف جديد</h6>
-                                <p class="text-muted mb-0">PDF, JPG, PNG - اترك فارغاً للاحتفاظ بالملف الحالي</p>
-                                <input type="file" id="editOrderFile" name="editOrderFile" accept=".pdf,.jpg,.jpeg,.png" 
-                                       style="display: none;" onchange="displayEditOrderFileName()">
-                            </div>
-                            <div id="editOrderFileName" class="mt-2 text-center" style="display: none;"></div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" onclick="saveOrderChanges()">حفظ التغييرات</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteOrderModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger">
-                    <h5 class="modal-title text-white"><i class="fas fa-trash me-2"></i> تأكيد الحذف</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center mb-3">
-                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
-                    </div>
-                    <h5 class="text-center">هل أنت متأكد من حذف أمر الشراء؟</h5>
-                    <p class="text-center text-muted">لا يمكن التراجع عن هذا الإجراء</p>
-                    <div id="deleteOrderDetails" class="bg-light p-3 rounded"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmDeleteOrder()">حذف الأمر</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- View File Modal -->
-    <div class="modal fade" id="viewFileModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file me-2"></i> عرض المرفق</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <div id="filePreviewContainer">
-                        <!-- سيتم عرض الملف هنا -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-primary" id="downloadFileBtn">
-                        <i class="fas fa-download"></i> تحميل
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     
@@ -689,60 +427,17 @@
         // Global variables
         let purchaseOrders = [];
         let filteredOrders = [];
-        let suppliers = [];
-        let sortColumn = null;
-        let sortDirection = 'asc';
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 تحميل صفحة أوامر الشراء المبسطة...');
+            console.log('🚀 تحميل صفحة أوامر الشراء...');
             
             // Set today's date as default
             document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
             
             // Load initial data
-            loadAllData();
+            loadPurchaseOrders();
         });
-
-        // Show alert function
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById('alertContainer');
-            const alertId = 'alert_' + Date.now();
-            
-            const alertElement = document.createElement('div');
-            alertElement.id = alertId;
-            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
-            alertElement.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            alertContainer.appendChild(alertElement);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                const element = document.getElementById(alertId);
-                if (element) {
-                    element.remove();
-                }
-            }, 5000);
-        }
-
-        // Load all data
-        async function loadAllData() {
-            try {
-                await Promise.all([
-                    loadPurchaseOrders(),
-                    loadSuppliers()
-                ]);
-                updateStatistics();
-                console.log('✅ تم تحميل جميع البيانات');
-            } catch (error) {
-                console.error('خطأ في تحميل البيانات:', error);
-                showAlert('خطأ في تحميل البيانات', 'danger');
-            }
-        }
 
         // Load purchase orders
         async function loadPurchaseOrders() {
@@ -754,7 +449,7 @@
                     purchaseOrders = result.data || [];
                     filteredOrders = [...purchaseOrders];
                     renderOrdersTable();
-                    updateOrdersCount();
+                    updateStatistics();
                     console.log(`🛒 تم تحميل ${purchaseOrders.length} أمر شراء`);
                 } else {
                     console.error('خطأ في تحميل أوامر الشراء:', result.message);
@@ -770,153 +465,6 @@
             }
         }
 
-        // Load suppliers for autocomplete
-        async function loadSuppliers() {
-            try {
-                const response = await fetch('/api/suppliers');
-                const result = await response.json();
-                
-                if (result.success) {
-                    suppliers = result.data || [];
-                    setupSupplierAutocomplete();
-                    console.log(`🏪 تم تحميل ${suppliers.length} مورد`);
-                } else {
-                    suppliers = [];
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل الموردين:', error);
-                suppliers = [];
-            }
-        }
-
-        // Setup supplier autocomplete
-        function setupSupplierAutocomplete() {
-            const supplierInput = document.getElementById('supplierName');
-            const suggestionsDiv = document.getElementById('supplierSuggestions');
-            
-            if (!supplierInput || !suggestionsDiv) return;
-            
-            supplierInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                
-                if (query.length < 2) {
-                    suggestionsDiv.style.display = 'none';
-                    return;
-                }
-                
-                const filteredSuppliers = suppliers.filter(supplier => 
-                    supplier.name.toLowerCase().includes(query)
-                );
-                
-                if (filteredSuppliers.length > 0) {
-                    suggestionsDiv.innerHTML = filteredSuppliers.map(supplier => 
-                        `<div class="autocomplete-suggestion" onclick="selectSupplier('${supplier.name}')">${supplier.name}</div>`
-                    ).join('');
-                    suggestionsDiv.style.display = 'block';
-                } else {
-                    suggestionsDiv.style.display = 'none';
-                }
-            });
-            
-            // Hide suggestions when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.autocomplete-container')) {
-                    suggestionsDiv.style.display = 'none';
-                }
-            });
-        }
-
-        // Select supplier from autocomplete
-        function selectSupplier(supplierName) {
-            document.getElementById('supplierName').value = supplierName;
-            document.getElementById('supplierSuggestions').style.display = 'none';
-        }
-
-        // Display order file name
-        function displayOrderFileName() {
-            const fileInput = document.getElementById('orderFile');
-            const fileName = document.getElementById('orderFileName');
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
-                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
-                fileName.style.display = 'block';
-            }
-        }
-
-        // Display edit order file name
-        function displayEditOrderFileName() {
-            const fileInput = document.getElementById('editOrderFile');
-            const fileName = document.getElementById('editOrderFileName');
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
-                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
-                fileName.style.display = 'block';
-            }
-        }
-
-        // Save new order
-        async function saveOrder() {
-            const form = document.getElementById('addOrderForm');
-            const formData = new FormData(form);
-            
-            // Validation
-            const requiredFields = ['supplierName', 'orderDescription', 'orderAmount', 'orderDate'];
-            let isValid = true;
-            
-            for (let field of requiredFields) {
-                const element = document.getElementById(field);
-                if (!element.value.trim()) {
-                    element.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    element.classList.remove('is-invalid');
-                }
-            }
-            
-            if (!isValid) {
-                showAlert('الرجاء ملء جميع الحقول المطلوبة', 'warning');
-                return;
-            }
-            
-            try {
-                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
-                const originalText = saveBtn.textContent;
-                saveBtn.textContent = 'جاري الحفظ...';
-                saveBtn.disabled = true;
-                
-                const response = await fetch('/api/purchase-orders', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم حفظ أمر الشراء بنجاح!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('addOrderModal')).hide();
-                    form.reset();
-                    document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
-                    document.getElementById('orderFileName').style.display = 'none';
-                    
-                    await loadPurchaseOrders();
-                    updateStatistics();
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في حفظ أمر الشراء:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            } finally {
-                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
-                saveBtn.textContent = 'حفظ الأمر';
-                saveBtn.disabled = false;
-            }
-        }
-
         // Update statistics
         function updateStatistics() {
             const total = purchaseOrders.length;
@@ -924,10 +472,6 @@
             
             document.getElementById('totalOrders').textContent = total;
             document.getElementById('totalOrdersValue').textContent = totalValue.toLocaleString();
-        }
-
-        // Update orders count
-        function updateOrdersCount() {
             document.getElementById('ordersCount').textContent = filteredOrders.length + ' أوامر';
         }
 
@@ -956,50 +500,7 @@
             });
             
             renderOrdersTable();
-            updateOrdersCount();
-        }
-
-        // Sort table
-        function sortTable(column) {
-            if (sortColumn === column) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortColumn = column;
-                sortDirection = 'asc';
-            }
-
-            // Update sort indicators
-            document.querySelectorAll('.sortable i').forEach(icon => {
-                icon.className = 'fas fa-sort';
-            });
-
-            const currentHeader = document.querySelector(`[data-column="${column}"] i`);
-            currentHeader.className = sortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
-
-            // Sort the data
-            filteredOrders.sort((a, b) => {
-                let aVal = a[column];
-                let bVal = b[column];
-
-                if (column === 'amount') {
-                    aVal = parseFloat(aVal);
-                    bVal = parseFloat(bVal);
-                } else if (column === 'order_date') {
-                    aVal = new Date(aVal);
-                    bVal = new Date(bVal);
-                } else {
-                    aVal = String(aVal).toLowerCase();
-                    bVal = String(bVal).toLowerCase();
-                }
-
-                if (sortDirection === 'asc') {
-                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                } else {
-                    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-                }
-            });
-
-            renderOrdersTable();
+            updateStatistics();
         }
 
         // Render orders table
@@ -1027,193 +528,92 @@
                         <td class="order-number">${orderNumber}</td>
                         <td><span class="badge bg-info badge-custom">${order.supplier_name}</span></td>
                         <td class="text-start" style="max-width: 250px;">
-                            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${order.description}">
-                                ${order.description}
+                            <div style="overflow: hidden; text-overflow: ellipsis;" title="${order.description}">
+                                ${order.description.length > 50 ? order.description.substring(0, 50) + '...' : order.description}
                             </div>
                         </td>
                         <td class="amount-cell fw-bold">${parseFloat(order.amount).toLocaleString()} ريال</td>
                         <td>${formattedDate}</td>
                         <td>
                             ${hasFile ? 
-                                `<button class="btn btn-outline-success btn-sm action-btn" onclick="viewFile('${order.file_path}')" title="عرض المرفق">
-                                    <i class="fas fa-file"></i>
-                                </button>` : 
+                                `<a href="/uploads/${order.file_path}" target="_blank" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-file"></i> عرض
+                                </a>` : 
                                 '<span class="text-muted">لا يوجد</span>'
                             }
-                        </td>
-                        <td>
-                            <button class="btn btn-outline-warning btn-sm action-btn" onclick="editOrder(${order.id})" title="تحرير">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm action-btn" onclick="deleteOrder(${order.id})" title="حذف">
-                                <i class="fas fa-trash"></i>
-                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Edit order
-        function editOrder(orderId) {
-            const order = purchaseOrders.find(o => o.id === orderId);
-            if (!order) return;
+        // Display order file name
+        function displayOrderFileName() {
+            const fileInput = document.getElementById('orderFile');
+            const fileName = document.getElementById('orderFileName');
             
-            // Fill edit form
-            document.getElementById('editOrderId').value = order.id;
-            document.getElementById('displayOrderNumber').textContent = order.order_number || String(order.id).padStart(4, '0');
-            document.getElementById('editSupplierName').value = order.supplier_name;
-            document.getElementById('editOrderDate').value = order.order_date;
-            document.getElementById('editOrderDescription').value = order.description;
-            document.getElementById('editOrderAmount').value = order.amount;
-            
-            // Reset file display
-            document.getElementById('editOrderFileName').style.display = 'none';
-            
-            // Show modal
-            new bootstrap.Modal(document.getElementById('editOrderModal')).show();
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
+                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
+                fileName.style.display = 'block';
+            }
         }
 
-        // Save order changes
-        async function saveOrderChanges() {
-            const orderId = document.getElementById('editOrderId').value;
-            const form = document.getElementById('editOrderForm');
+        // Save new order
+        async function saveOrder() {
+            const form = document.getElementById('addOrderForm');
             const formData = new FormData(form);
             
+            // Validation
+            const supplierName = document.getElementById('supplierName').value.trim();
+            const orderDescription = document.getElementById('orderDescription').value.trim();
+            const orderAmount = document.getElementById('orderAmount').value;
+            const orderDate = document.getElementById('orderDate').value;
+            
+            if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
+                alert('الرجاء ملء جميع الحقول المطلوبة');
+                return;
+            }
+            
             try {
-                const saveBtn = document.querySelector('#editOrderModal .btn-primary');
+                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
                 const originalText = saveBtn.textContent;
                 saveBtn.textContent = 'جاري الحفظ...';
                 saveBtn.disabled = true;
                 
-                const response = await fetch(`/api/purchase-orders/${orderId}`, {
-                    method: 'PUT',
+                const response = await fetch('/api/purchase-orders', {
+                    method: 'POST',
                     body: formData
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    showAlert('تم تحديث أمر الشراء بنجاح!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
+                    alert('تم حفظ أمر الشراء بنجاح!');
+                    bootstrap.Modal.getInstance(document.getElementById('addOrderModal')).hide();
+                    form.reset();
+                    document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+                    document.getElementById('orderFileName').style.display = 'none';
                     
                     await loadPurchaseOrders();
-                    updateStatistics();
                 } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
+                    alert('خطأ: ' + result.message);
                 }
             } catch (error) {
-                console.error('خطأ في تحديث أمر الشراء:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
+                console.error('خطأ في حفظ أمر الشراء:', error);
+                alert('حدث خطأ في الاتصال بالخادم');
             } finally {
-                const saveBtn = document.querySelector('#editOrderModal .btn-primary');
-                saveBtn.textContent = 'حفظ التغييرات';
+                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
+                saveBtn.textContent = 'حفظ الأمر';
                 saveBtn.disabled = false;
             }
-        }
-
-        // Delete order
-        function deleteOrder(orderId) {
-            const order = purchaseOrders.find(o => o.id === orderId);
-            if (!order) return;
-            
-            // Show order details in delete modal
-            const orderNumber = order.order_number || String(order.id).padStart(4, '0');
-            document.getElementById('deleteOrderDetails').innerHTML = `
-                <strong>رقم الأمر:</strong> ${orderNumber}<br>
-                <strong>المورد:</strong> ${order.supplier_name}<br>
-                <strong>المبلغ:</strong> ${parseFloat(order.amount).toLocaleString()} ريال<br>
-                <strong>التاريخ:</strong> ${new Date(order.order_date).toLocaleDateString('ar-SA')}
-            `;
-            
-            // Store order ID for deletion
-            document.getElementById('deleteOrderModal').setAttribute('data-order-id', orderId);
-            
-            // Show modal
-            new bootstrap.Modal(document.getElementById('deleteOrderModal')).show();
-        }
-
-        // Confirm delete order
-        async function confirmDeleteOrder() {
-            const modal = document.getElementById('deleteOrderModal');
-            const orderId = modal.getAttribute('data-order-id');
-            
-            try {
-                const deleteBtn = document.querySelector('#deleteOrderModal .btn-danger');
-                const originalText = deleteBtn.textContent;
-                deleteBtn.textContent = 'جاري الحذف...';
-                deleteBtn.disabled = true;
-                
-                const response = await fetch(`/api/purchase-orders/${orderId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم حذف أمر الشراء بنجاح!', 'success');
-                    bootstrap.Modal.getInstance(modal).hide();
-                    
-                    await loadPurchaseOrders();
-                    updateStatistics();
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في حذف أمر الشراء:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            } finally {
-                const deleteBtn = document.querySelector('#deleteOrderModal .btn-danger');
-                deleteBtn.textContent = 'حذف الأمر';
-                deleteBtn.disabled = false;
-            }
-        }
-
-        // View file
-        function viewFile(filePath) {
-            const modal = new bootstrap.Modal(document.getElementById('viewFileModal'));
-            const container = document.getElementById('filePreviewContainer');
-            const downloadBtn = document.getElementById('downloadFileBtn');
-            
-            const fullPath = filePath.startsWith('/uploads/') ? filePath : `/uploads/${filePath}`;
-            
-            downloadBtn.onclick = () => window.open(fullPath, '_blank');
-            
-            const fileExtension = filePath.split('.').pop().toLowerCase();
-            
-            if (fileExtension === 'pdf') {
-                container.innerHTML = `
-                    <div class="text-center">
-                        <embed src="${fullPath}" type="application/pdf" width="100%" height="500px" style="border-radius: 10px;">
-                        <p class="mt-3">
-                            <i class="fas fa-info-circle text-info me-1"></i>
-                            إذا لم يظهر الملف، <a href="${fullPath}" target="_blank" class="text-primary">انقر هنا لفتحه في نافذة جديدة</a>
-                        </p>
-                    </div>
-                `;
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
-                container.innerHTML = `
-                    <div class="text-center">
-                        <img src="${fullPath}" class="img-fluid" alt="مرفق أمر الشراء" style="max-height: 500px; border-radius: 10px;">
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-file fa-4x text-muted mb-3"></i>
-                        <h5 class="text-muted">لا يمكن معاينة هذا النوع من الملفات</h5>
-                        <p class="text-muted">انقر على زر "تحميل" لحفظ الملف على جهازك</p>
-                    </div>
-                `;
-            }
-            
-            modal.show();
         }
 
         // Refresh data
         function refreshData() {
             console.log('🔄 إعادة تحميل البيانات...');
-            loadAllData();
+            loadPurchaseOrders();
         }
 
         // Test connection
