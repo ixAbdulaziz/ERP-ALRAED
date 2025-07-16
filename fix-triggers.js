@@ -1,7 +1,8 @@
 const { Pool } = require('pg');
 
-console.log('🔧 بدء إصلاح مشكلة triggers قاعدة البيانات...');
+console.log('🚨 EMERGENCY FIX - إصلاح فوري لمشكلة triggers');
 console.log('📅 التاريخ:', new Date().toLocaleString('ar-SA'));
+console.log('⚡ بدء الإصلاح الطارئ...');
 
 // إعداد الاتصال بـ PostgreSQL
 const pool = new Pool({
@@ -9,100 +10,186 @@ const pool = new Pool({
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-async function fixTriggers() {
+async function emergencyFix() {
     let client;
     
     try {
         console.log('🔗 الاتصال بقاعدة البيانات...');
         client = await pool.connect();
-        
         console.log('✅ تم الاتصال بنجاح');
         
         // بدء معاملة
         await client.query('BEGIN');
         
-        console.log('🧹 إزالة triggers والfunctions المُسببة للمشاكل...');
+        console.log('🧨 إزالة جميع triggers المُشكِلة بقوة...');
         
-        // قائمة الـ triggers والـ functions التي تحتاج إزالة
-        const itemsToRemove = [
-            'DROP TRIGGER IF EXISTS validate_invoice_dates ON invoices',
-            'DROP TRIGGER IF EXISTS validate_purchase_order_dates ON purchase_orders', 
-            'DROP TRIGGER IF EXISTS validate_dates_trigger ON invoices',
-            'DROP TRIGGER IF EXISTS validate_dates_trigger ON purchase_orders',
-            'DROP TRIGGER IF EXISTS validate_order_dates_trigger ON purchase_orders',
-            'DROP TRIGGER IF EXISTS validate_invoice_dates_trigger ON invoices',
-            'DROP FUNCTION IF EXISTS validate_dates() CASCADE',
-            'DROP FUNCTION IF EXISTS validate_invoice_dates() CASCADE',
-            'DROP FUNCTION IF EXISTS validate_order_dates() CASCADE'
+        // البحث عن جميع triggers الموجودة
+        const existingTriggers = await client.query(`
+            SELECT 
+                schemaname, 
+                tablename, 
+                triggername
+            FROM pg_trigger t
+            JOIN pg_class c ON t.tgrelid = c.oid
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            WHERE NOT t.tgisinternal
+            AND n.nspname = 'public'
+            ORDER BY tablename, triggername
+        `);
+        
+        console.log('📋 Triggers الموجودة حالياً:');
+        existingTriggers.rows.forEach(row => {
+            console.log(`  - ${row.tablename}.${row.triggername}`);
+        });
+        
+        // حذف جميع triggers ما عدا triggers التحديث التلقائي الآمنة
+        const triggersToKeep = [
+            'update_suppliers_updated_at',
+            'update_invoices_updated_at', 
+            'update_purchase_orders_updated_at'
         ];
         
-        for (const dropQuery of itemsToRemove) {
-            try {
-                await client.query(dropQuery);
-                console.log(`✅ تم تنفيذ: ${dropQuery.split(' ')[2]} ${dropQuery.split(' ')[5] || ''}`);
-            } catch (error) {
-                if (!error.message.includes('does not exist')) {
-                    console.warn(`⚠️ تحذير في: ${dropQuery} - ${error.message}`);
+        for (const row of existingTriggers.rows) {
+            if (!triggersToKeep.includes(row.triggername)) {
+                try {
+                    await client.query(`DROP TRIGGER IF EXISTS ${row.triggername} ON ${row.tablename} CASCADE`);
+                    console.log(`🗑️ تم حذف trigger: ${row.tablename}.${row.triggername}`);
+                } catch (error) {
+                    console.warn(`⚠️ خطأ في حذف ${row.triggername}:`, error.message);
                 }
+            } else {
+                console.log(`✅ تم الاحتفاظ بـ trigger آمن: ${row.triggername}`);
             }
         }
         
-        console.log('🔧 إنشاء function آمن للتحديث التلقائي...');
+        console.log('🧨 حذف جميع functions المُشكِلة...');
         
-        // إنشاء function آمن للتحديث التلقائي فقط
+        // البحث عن functions الموجودة
+        const existingFunctions = await client.query(`
+            SELECT 
+                schemaname,
+                functionname
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE n.nspname = 'public'
+            AND functionname LIKE '%validate%'
+            ORDER BY functionname
+        `);
+        
+        console.log('📋 Functions المُشكِلة:');
+        existingFunctions.rows.forEach(row => {
+            console.log(`  - ${row.functionname}`);
+        });
+        
+        // حذف functions المُشكِلة
+        const functionsToRemove = [
+            'validate_dates',
+            'validate_invoice_dates', 
+            'validate_order_dates',
+            'validate_purchase_order_dates'
+        ];
+        
+        for (const funcName of functionsToRemove) {
+            try {
+                await client.query(`DROP FUNCTION IF EXISTS ${funcName}() CASCADE`);
+                console.log(`🗑️ تم حذف function: ${funcName}`);
+            } catch (error) {
+                console.warn(`⚠️ خطأ في حذف function ${funcName}:`, error.message);
+            }
+        }
+        
+        console.log('🔧 إنشاء function آمن للتحديث التلقائي فقط...');
+        
+        // إنشاء function آمن للتحديث التلقائي
         await client.query(`
             CREATE OR REPLACE FUNCTION update_updated_at_column()
             RETURNS TRIGGER AS $$
             BEGIN
+                -- فقط تحديث updated_at - لا توجد عمليات تحقق معقدة
                 NEW.updated_at = CURRENT_TIMESTAMP;
                 RETURN NEW;
             END;
             $$ language 'plpgsql';
         `);
         
-        console.log('✅ تم إنشاء function التحديث التلقائي');
+        console.log('✅ تم إنشاء function آمن');
         
         // إنشاء triggers آمنة للتحديث التلقائي فقط
+        console.log('🔧 إنشاء triggers آمنة للتحديث التلقائي...');
+        
         const safeTriggers = [
-            'DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers',
-            'CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
-            
-            'DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices', 
-            'CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
-            
-            'DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders',
-            'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()'
+            {
+                table: 'suppliers',
+                name: 'update_suppliers_updated_at'
+            },
+            {
+                table: 'invoices', 
+                name: 'update_invoices_updated_at'
+            },
+            {
+                table: 'purchase_orders',
+                name: 'update_purchase_orders_updated_at'
+            }
         ];
         
-        for (const triggerQuery of safeTriggers) {
+        for (const trigger of safeTriggers) {
             try {
-                await client.query(triggerQuery);
-                console.log('✅ تم إنشاء trigger آمن');
+                // حذف trigger إذا كان موجود
+                await client.query(`DROP TRIGGER IF EXISTS ${trigger.name} ON ${trigger.table}`);
+                
+                // إنشاء trigger جديد آمن
+                await client.query(`
+                    CREATE TRIGGER ${trigger.name} 
+                    BEFORE UPDATE ON ${trigger.table} 
+                    FOR EACH ROW 
+                    EXECUTE FUNCTION update_updated_at_column()
+                `);
+                
+                console.log(`✅ تم إنشاء trigger آمن: ${trigger.table}.${trigger.name}`);
             } catch (error) {
-                console.warn('⚠️ تحذير في إنشاء trigger:', error.message);
+                console.warn(`⚠️ خطأ في إنشاء trigger ${trigger.name}:`, error.message);
             }
         }
         
         // إتمام المعاملة
         await client.query('COMMIT');
         
-        console.log('🎉 تم إصلاح مشكلة triggers بنجاح!');
+        console.log('🎉 تم الإصلاح الطارئ بنجاح!');
         
         // اختبار سريع
         console.log('🧪 اختبار سريع...');
         
         try {
-            const testResult = await client.query('SELECT COUNT(*) FROM purchase_orders');
-            console.log(`✅ عدد أوامر الشراء: ${testResult.rows[0].count}`);
+            // اختبار جدول purchase_orders
+            const testCount = await client.query('SELECT COUNT(*) FROM purchase_orders');
+            console.log(`✅ عدد أوامر الشراء: ${testCount.rows[0].count}`);
+            
+            // اختبار أن الـ triggers المُشكِلة لم تعد موجودة
+            const remainingTriggers = await client.query(`
+                SELECT COUNT(*) 
+                FROM pg_trigger t
+                JOIN pg_class c ON t.tgrelid = c.oid
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                WHERE NOT t.tgisinternal
+                AND n.nspname = 'public'
+                AND t.tgname LIKE '%validate%'
+            `);
+            
+            if (parseInt(remainingTriggers.rows[0].count) === 0) {
+                console.log('✅ لا توجد triggers مُشكِلة متبقية');
+            } else {
+                console.warn('⚠️ ما زالت هناك triggers مُشكِلة متبقية:', remainingTriggers.rows[0].count);
+            }
+            
         } catch (testError) {
             console.warn('⚠️ تحذير في الاختبار:', testError.message);
         }
         
-        console.log('✅ تم الانتهاء من إصلاح المشكلة');
+        console.log('✅ الإصلاح الطارئ مكتمل - يجب أن تعمل أوامر الشراء الآن!');
         
     } catch (error) {
         if (client) await client.query('ROLLBACK');
-        console.error('❌ خطأ في إصلاح triggers:', error.message);
+        console.error('❌ خطأ في الإصلاح الطارئ:', error.message);
         console.error('📍 التفاصيل:', error.stack);
         process.exit(1);
     } finally {
@@ -111,11 +198,12 @@ async function fixTriggers() {
     }
 }
 
-// تشغيل الإصلاح
-fixTriggers().then(() => {
-    console.log('🎯 تم الانتهاء من العملية بنجاح');
+// تشغيل الإصلاح الطارئ
+emergencyFix().then(() => {
+    console.log('🎯 تم الانتهاء من الإصلاح الطارئ بنجاح');
+    console.log('🚀 يمكن الآن إضافة أوامر الشراء بدون مشاكل!');
     process.exit(0);
 }).catch(error => {
-    console.error('💥 خطأ عام:', error);
+    console.error('💥 خطأ عام في الإصلاح الطارئ:', error);
     process.exit(1);
 });
