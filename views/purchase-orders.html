@@ -301,7 +301,7 @@
                 <i class="fas fa-search"></i>
                 البحث والإضافة
                 <div class="ms-auto">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOrderModal">
+                    <button class="btn btn-primary" onclick="openAddOrderModal()">
                         <i class="fas fa-plus me-1"></i> إضافة أمر شراء جديد
                     </button>
                     <button class="btn btn-outline-primary" onclick="refreshData()">
@@ -357,7 +357,7 @@
                 <i class="fas fa-shopping-cart"></i>
                 <h5>لا توجد أوامر شراء بعد</h5>
                 <p class="text-muted mb-4">ابدأ بإضافة أول أمر شراء</p>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOrderModal">
+                <button class="btn btn-primary" onclick="openAddOrderModal()">
                     <i class="fas fa-plus me-1"></i> إضافة أمر شراء جديد
                 </button>
             </div>
@@ -365,12 +365,12 @@
     </div>
 
     <!-- Add Purchase Order Modal -->
-    <div class="modal fade" id="addOrderModal" tabindex="-1">
+    <div class="modal fade" id="addOrderModal" tabindex="-1" aria-labelledby="addOrderModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-plus me-2"></i> إضافة أمر شراء جديد</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="addOrderModalLabel"><i class="fas fa-plus me-2"></i> إضافة أمر شراء جديد</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addOrderForm" enctype="multipart/form-data">
@@ -407,7 +407,6 @@
                             </div>
                         </div>
 
-                        <!-- إضافة حقول جديدة مطلوبة -->
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="deliveryDate" class="form-label">تاريخ التسليم</label>
@@ -445,7 +444,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" onclick="saveOrder()">حفظ الأمر</button>
+                    <button type="button" class="btn btn-primary" id="saveOrderBtn" onclick="saveOrder()">حفظ الأمر</button>
                 </div>
             </div>
         </div>
@@ -458,13 +457,22 @@
         // Global variables
         let purchaseOrders = [];
         let filteredOrders = [];
+        let addOrderModalInstance = null;
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 تحميل صفحة أوامر الشراء...');
             
+            // Initialize Bootstrap modal
+            try {
+                addOrderModalInstance = new bootstrap.Modal(document.getElementById('addOrderModal'));
+            } catch (error) {
+                console.error('خطأ في تهيئة modal:', error);
+            }
+            
             // Set today's date as default
-            document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('orderDate').value = today;
             
             // Load initial data
             loadPurchaseOrders();
@@ -473,18 +481,21 @@
         // Show alert function
         function showAlert(message, type = 'success') {
             const alertArea = document.getElementById('alertArea');
+            const alertId = 'alert-' + Date.now();
+            
             const alertHtml = `
-                <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <div class="alert alert-${type} alert-dismissible fade show" role="alert" id="${alertId}">
                     <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
                     ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             `;
+            
             alertArea.innerHTML = alertHtml;
             
             // Auto dismiss after 5 seconds
             setTimeout(() => {
-                const alert = alertArea.querySelector('.alert');
+                const alert = document.getElementById(alertId);
                 if (alert) {
                     alert.remove();
                 }
@@ -494,14 +505,69 @@
             alertArea.scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Open add order modal
+        function openAddOrderModal() {
+            try {
+                if (addOrderModalInstance) {
+                    addOrderModalInstance.show();
+                } else {
+                    // Fallback method
+                    const modalElement = document.getElementById('addOrderModal');
+                    if (modalElement) {
+                        modalElement.style.display = 'block';
+                        modalElement.classList.add('show');
+                        document.body.classList.add('modal-open');
+                        
+                        // Add backdrop
+                        const backdrop = document.createElement('div');
+                        backdrop.className = 'modal-backdrop fade show';
+                        backdrop.id = 'modal-backdrop';
+                        document.body.appendChild(backdrop);
+                    }
+                }
+            } catch (error) {
+                console.error('خطأ في فتح modal:', error);
+                showAlert('خطأ في فتح نافذة إضافة الأمر', 'danger');
+            }
+        }
+
+        // Close modal manually
+        function closeModal() {
+            try {
+                if (addOrderModalInstance) {
+                    addOrderModalInstance.hide();
+                } else {
+                    // Fallback method
+                    const modalElement = document.getElementById('addOrderModal');
+                    if (modalElement) {
+                        modalElement.style.display = 'none';
+                        modalElement.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                        
+                        // Remove backdrop
+                        const backdrop = document.getElementById('modal-backdrop');
+                        if (backdrop) {
+                            backdrop.remove();
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('خطأ في إغلاق modal:', error);
+            }
+        }
+
         // Load purchase orders
         async function loadPurchaseOrders() {
             try {
                 console.log('📥 جاري تحميل أوامر الشراء...');
                 
                 const response = await fetch('/api/purchase-orders');
-                const result = await response.json();
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
                 console.log('📋 استجابة الخادم:', result);
                 
                 if (result.success) {
@@ -528,174 +594,232 @@
 
         // Update statistics
         function updateStatistics() {
-            const total = purchaseOrders.length;
-            const totalValue = purchaseOrders.reduce((sum, order) => sum + parseFloat(order.amount || 0), 0);
-            
-            document.getElementById('totalOrders').textContent = total;
-            document.getElementById('totalOrdersValue').textContent = totalValue.toLocaleString();
-            document.getElementById('ordersCount').textContent = filteredOrders.length + ' أوامر';
+            try {
+                const total = purchaseOrders.length;
+                const totalValue = purchaseOrders.reduce((sum, order) => {
+                    const amount = parseFloat(order.amount);
+                    return sum + (isNaN(amount) ? 0 : amount);
+                }, 0);
+                
+                document.getElementById('totalOrders').textContent = total;
+                document.getElementById('totalOrdersValue').textContent = totalValue.toLocaleString();
+                document.getElementById('ordersCount').textContent = filteredOrders.length + ' أوامر';
+            } catch (error) {
+                console.error('خطأ في تحديث الإحصائيات:', error);
+            }
         }
 
         // Filter orders
         function filterOrders() {
-            const supplierSearch = document.getElementById('supplierSearch').value.toLowerCase();
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
-            
-            filteredOrders = purchaseOrders.filter(order => {
-                let matches = true;
+            try {
+                const supplierSearch = document.getElementById('supplierSearch').value.toLowerCase();
+                const dateFrom = document.getElementById('dateFrom').value;
+                const dateTo = document.getElementById('dateTo').value;
                 
-                if (supplierSearch && !order.supplier_name.toLowerCase().includes(supplierSearch)) {
-                    matches = false;
-                }
+                filteredOrders = purchaseOrders.filter(order => {
+                    let matches = true;
+                    
+                    if (supplierSearch && !order.supplier_name.toLowerCase().includes(supplierSearch)) {
+                        matches = false;
+                    }
+                    
+                    if (dateFrom && new Date(order.order_date) < new Date(dateFrom)) {
+                        matches = false;
+                    }
+                    
+                    if (dateTo && new Date(order.order_date) > new Date(dateTo)) {
+                        matches = false;
+                    }
+                    
+                    return matches;
+                });
                 
-                if (dateFrom && new Date(order.order_date) < new Date(dateFrom)) {
-                    matches = false;
-                }
-                
-                if (dateTo && new Date(order.order_date) > new Date(dateTo)) {
-                    matches = false;
-                }
-                
-                return matches;
-            });
-            
-            renderOrdersTable();
-            updateStatistics();
+                renderOrdersTable();
+                updateStatistics();
+            } catch (error) {
+                console.error('خطأ في تصفية الأوامر:', error);
+            }
         }
 
         // Render orders table
         function renderOrdersTable() {
-            const tbody = document.getElementById('ordersTableBody');
-            const emptyState = document.getElementById('ordersEmptyState');
-            
-            if (filteredOrders.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.style.display = 'block';
-                return;
+            try {
+                const tbody = document.getElementById('ordersTableBody');
+                const emptyState = document.getElementById('ordersEmptyState');
+                
+                if (!tbody || !emptyState) {
+                    console.error('العناصر المطلوبة غير موجودة');
+                    return;
+                }
+                
+                if (filteredOrders.length === 0) {
+                    tbody.innerHTML = '';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+                
+                emptyState.style.display = 'none';
+                
+                const ordersHTML = filteredOrders.map(order => {
+                    try {
+                        const formattedDate = new Date(order.order_date).toLocaleDateString('ar-SA');
+                        const hasFile = order.file_path ? true : false;
+                        
+                        // Generate auto order number if not exists
+                        const orderNumber = order.order_number || String(order.id).padStart(4, '0');
+                        
+                        return `
+                            <tr>
+                                <td class="order-number">${orderNumber}</td>
+                                <td><span class="badge bg-info badge-custom">${order.supplier_name}</span></td>
+                                <td class="text-start" style="max-width: 250px;">
+                                    <div style="overflow: hidden; text-overflow: ellipsis;" title="${order.description}">
+                                        ${order.description.length > 50 ? order.description.substring(0, 50) + '...' : order.description}
+                                    </div>
+                                </td>
+                                <td class="amount-cell fw-bold">${parseFloat(order.amount).toLocaleString()} ريال</td>
+                                <td>${formattedDate}</td>
+                                <td>
+                                    ${hasFile ? 
+                                        `<a href="/uploads/${order.file_path}" target="_blank" class="btn btn-outline-success btn-sm">
+                                            <i class="fas fa-file"></i> عرض
+                                        </a>` : 
+                                        '<span class="text-muted">لا يوجد</span>'
+                                    }
+                                </td>
+                            </tr>
+                        `;
+                    } catch (error) {
+                        console.error('خطأ في معالجة order:', error, order);
+                        return '';
+                    }
+                }).join('');
+                
+                tbody.innerHTML = ordersHTML;
+            } catch (error) {
+                console.error('خطأ في عرض الجدول:', error);
             }
-            
-            emptyState.style.display = 'none';
-            
-            tbody.innerHTML = filteredOrders.map(order => {
-                const formattedDate = new Date(order.order_date).toLocaleDateString('ar-SA');
-                const hasFile = order.file_path ? true : false;
-                
-                // Generate auto order number if not exists
-                const orderNumber = order.order_number || String(order.id).padStart(4, '0');
-                
-                return `
-                    <tr>
-                        <td class="order-number">${orderNumber}</td>
-                        <td><span class="badge bg-info badge-custom">${order.supplier_name}</span></td>
-                        <td class="text-start" style="max-width: 250px;">
-                            <div style="overflow: hidden; text-overflow: ellipsis;" title="${order.description}">
-                                ${order.description.length > 50 ? order.description.substring(0, 50) + '...' : order.description}
-                            </div>
-                        </td>
-                        <td class="amount-cell fw-bold">${parseFloat(order.amount).toLocaleString()} ريال</td>
-                        <td>${formattedDate}</td>
-                        <td>
-                            ${hasFile ? 
-                                `<a href="/uploads/${order.file_path}" target="_blank" class="btn btn-outline-success btn-sm">
-                                    <i class="fas fa-file"></i> عرض
-                                </a>` : 
-                                '<span class="text-muted">لا يوجد</span>'
-                            }
-                        </td>
-                    </tr>
-                `;
-            }).join('');
         }
 
         // Display order file name
         function displayOrderFileName() {
-            const fileInput = document.getElementById('orderFile');
-            const fileName = document.getElementById('orderFileName');
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
+            try {
+                const fileInput = document.getElementById('orderFile');
+                const fileName = document.getElementById('orderFileName');
                 
-                // التحقق من حجم الملف
-                if (file.size > 5 * 1024 * 1024) {
-                    showAlert('حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت', 'danger');
-                    fileInput.value = '';
-                    fileName.style.display = 'none';
+                if (!fileInput || !fileName) {
+                    console.error('عناصر الملف غير موجودة');
                     return;
                 }
                 
-                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
-                fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
-                fileName.style.display = 'block';
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    
+                    // التحقق من حجم الملف
+                    if (file.size > 5 * 1024 * 1024) {
+                        showAlert('حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت', 'danger');
+                        fileInput.value = '';
+                        fileName.style.display = 'none';
+                        return;
+                    }
+                    
+                    const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
+                    fileName.innerHTML = `<i class="${fileIcon}"></i> <strong>${file.name}</strong>`;
+                    fileName.style.display = 'block';
+                } else {
+                    fileName.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('خطأ في عرض اسم الملف:', error);
             }
         }
 
-        // Save new order
+        // Save new order - الدالة المُصلحة
         async function saveOrder() {
-            const form = document.getElementById('addOrderForm');
-            const formData = new FormData(form);
-            
-            console.log('💾 محاولة حفظ أمر شراء جديد...');
-            
-            // Validation
-            const supplierName = document.getElementById('supplierName').value.trim();
-            const orderDescription = document.getElementById('orderDescription').value.trim();
-            const orderAmount = document.getElementById('orderAmount').value;
-            const orderDate = document.getElementById('orderDate').value;
-            
-            if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
-                showAlert('الرجاء ملء جميع الحقول المطلوبة', 'danger');
-                return;
-            }
-            
-            if (parseFloat(orderAmount) <= 0) {
-                showAlert('يجب أن يكون مبلغ الأمر أكبر من الصفر', 'danger');
-                return;
-            }
-            
-            // طباعة البيانات للتحقق
-            console.log('📝 بيانات النموذج:');
-            for (let [key, value] of formData.entries()) {
-                console.log(`${key}: ${value}`);
-            }
-            
             try {
-                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
-                const originalText = saveBtn.textContent;
-                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-                saveBtn.disabled = true;
+                console.log('💾 محاولة حفظ أمر شراء جديد...');
                 
-                console.log('📡 إرسال طلب إلى الخادم...');
-                
-                const response = await fetch('/api/purchase-orders', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                console.log('📨 حالة الاستجابة:', response.status);
-                
-                const result = await response.json();
-                console.log('📥 استجابة الخادم:', result);
-                
-                if (result.success) {
-                    showAlert('تم حفظ أمر الشراء بنجاح! 🎉', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('addOrderModal')).hide();
-                    form.reset();
-                    document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
-                    document.getElementById('orderFileName').style.display = 'none';
-                    
-                    await loadPurchaseOrders();
-                } else {
-                    console.error('❌ خطأ من الخادم:', result.message);
-                    showAlert('خطأ: ' + result.message, 'danger');
+                const form = document.getElementById('addOrderForm');
+                if (!form) {
+                    throw new Error('النموذج غير موجود');
                 }
+                
+                // Validation
+                const supplierName = document.getElementById('supplierName').value.trim();
+                const orderDescription = document.getElementById('orderDescription').value.trim();
+                const orderAmount = document.getElementById('orderAmount').value;
+                const orderDate = document.getElementById('orderDate').value;
+                
+                if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
+                    showAlert('الرجاء ملء جميع الحقول المطلوبة', 'danger');
+                    return;
+                }
+                
+                if (parseFloat(orderAmount) <= 0) {
+                    showAlert('يجب أن يكون مبلغ الأمر أكبر من الصفر', 'danger');
+                    return;
+                }
+                
+                // إنشاء FormData
+                const formData = new FormData(form);
+                
+                // طباعة البيانات للتحقق
+                console.log('📝 بيانات النموذج:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(`${key}: ${value}`);
+                }
+                
+                // تعطيل زر الحفظ
+                const saveBtn = document.getElementById('saveOrderBtn');
+                if (saveBtn) {
+                    const originalText = saveBtn.textContent;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+                    saveBtn.disabled = true;
+                    
+                    try {
+                        console.log('📡 إرسال طلب إلى الخادم...');
+                        
+                        const response = await fetch('/api/purchase-orders', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        console.log('📨 حالة الاستجابة:', response.status);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        console.log('📥 استجابة الخادم:', result);
+                        
+                        if (result.success) {
+                            showAlert('تم حفظ أمر الشراء بنجاح! 🎉', 'success');
+                            
+                            // إغلاق النافذة المنبثقة
+                            closeModal();
+                            
+                            // إعادة تعيين النموذج
+                            form.reset();
+                            document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+                            document.getElementById('orderFileName').style.display = 'none';
+                            
+                            // إعادة تحميل البيانات
+                            await loadPurchaseOrders();
+                        } else {
+                            console.error('❌ خطأ من الخادم:', result.message);
+                            showAlert('خطأ: ' + result.message, 'danger');
+                        }
+                    } finally {
+                        // استعادة زر الحفظ
+                        saveBtn.textContent = 'حفظ الأمر';
+                        saveBtn.disabled = false;
+                    }
+                }
+                
             } catch (error) {
                 console.error('❌ خطأ في حفظ أمر الشراء:', error);
                 showAlert('حدث خطأ في الاتصال بالخادم: ' + error.message, 'danger');
-            } finally {
-                const saveBtn = document.querySelector('#addOrderModal .btn-primary');
-                saveBtn.textContent = 'حفظ الأمر';
-                saveBtn.disabled = false;
             }
         }
 
@@ -716,6 +840,14 @@
                 console.error('❌ خطأ في الاتصال:', error);
                 showAlert('خطأ في الاتصال بالخادم', 'danger');
             });
+
+        // Handle modal close events
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('btn-close') || e.target.getAttribute('data-bs-dismiss') === 'modal') {
+                closeModal();
+            }
+        });
+
     </script>
 </body>
 </html>
