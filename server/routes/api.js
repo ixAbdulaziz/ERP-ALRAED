@@ -66,6 +66,22 @@ async function checkDatabaseConnection() {
     }
 }
 
+// دالة للتحقق من وجود عمود في جدول
+async function checkColumnExists(tableName, columnName) {
+    try {
+        const result = await pool.query(`
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = $1 AND column_name = $2
+        `, [tableName, columnName]);
+        
+        return result.rows.length > 0;
+    } catch (error) {
+        console.warn(`⚠️ خطأ في فحص العمود ${columnName} في ${tableName}:`, error.message);
+        return false;
+    }
+}
+
 // ============== APIs الأساسية ==============
 
 // 🧪 API اختبار الاتصال
@@ -282,7 +298,7 @@ router.get('/suppliers', async (req, res) => {
 
 // ============== APIs الفواتير ==============
 
-// 📋 API جلب جميع الفواتير مع إمكانية الفلترة - لصفحة العرض
+// 📋 API جلب جميع الفواتير مع إمكانية الفلترة - لصفحة العرض (مع حماية من الأعمدة المفقودة)
 router.get('/invoices', async (req, res) => {
     try {
         console.log('📋 طلب الفواتير...');
@@ -297,6 +313,10 @@ router.get('/invoices', async (req, res) => {
             });
         }
 
+        // التحقق من وجود عمود status
+        const hasStatusColumn = await checkColumnExists('invoices', 'status');
+        const hasUpdatedAtColumn = await checkColumnExists('invoices', 'updated_at');
+
         const { 
             supplier_name, 
             search, 
@@ -310,6 +330,7 @@ router.get('/invoices', async (req, res) => {
         
         console.log('🔍 فلاتر البحث:', { supplier_name, search, date_from, date_to, invoice_type, category });
         
+        // بناء استعلام ديناميكي حسب الأعمدة المتاحة
         let query = `
             SELECT 
                 id,
@@ -323,9 +344,9 @@ router.get('/invoices', async (req, res) => {
                 total_amount,
                 notes,
                 file_path,
-                status,
-                created_at,
-                updated_at
+                ${hasStatusColumn ? 'status,' : "'pending' as status,"}
+                created_at
+                ${hasUpdatedAtColumn ? ', updated_at' : ', created_at as updated_at'}
             FROM invoices
             WHERE 1=1
         `;
@@ -392,7 +413,7 @@ router.get('/invoices', async (req, res) => {
             total_amount: parseFloat(row.total_amount),
             notes: row.notes,
             file_path: row.file_path,
-            status: row.status,
+            status: row.status || 'pending',
             created_at: row.created_at,
             updated_at: row.updated_at
         }));
@@ -430,6 +451,9 @@ router.get('/recent-invoices', async (req, res) => {
             });
         }
 
+        // التحقق من وجود عمود status
+        const hasStatusColumn = await checkColumnExists('invoices', 'status');
+
         const { limit = 5 } = req.query;
         
         const query = `
@@ -441,8 +465,8 @@ router.get('/recent-invoices', async (req, res) => {
                 invoice_date,
                 created_at,
                 invoice_type,
-                category,
-                status
+                category
+                ${hasStatusColumn ? ', status' : ", 'pending' as status"}
             FROM invoices
             ORDER BY created_at DESC
             LIMIT $1
@@ -459,7 +483,7 @@ router.get('/recent-invoices', async (req, res) => {
             created_at: row.created_at,
             invoice_type: row.invoice_type,
             category: row.category,
-            status: row.status
+            status: row.status || 'pending'
         }));
 
         console.log(`📋 تم جلب ${invoices.length} فاتورة حديثة`);
@@ -499,11 +523,17 @@ router.get('/invoices/:id', async (req, res) => {
             });
         }
 
+        // التحقق من وجود عمود status
+        const hasStatusColumn = await checkColumnExists('invoices', 'status');
+        const hasUpdatedAtColumn = await checkColumnExists('invoices', 'updated_at');
+
         const query = `
             SELECT 
                 id, invoice_number, supplier_name, invoice_type, category,
                 invoice_date, amount_before_tax, tax_amount, total_amount,
-                notes, file_path, status, created_at, updated_at
+                notes, file_path, created_at
+                ${hasStatusColumn ? ', status' : ", 'pending' as status"}
+                ${hasUpdatedAtColumn ? ', updated_at' : ', created_at as updated_at'}
             FROM invoices
             WHERE id = $1
         `;
@@ -530,7 +560,7 @@ router.get('/invoices/:id', async (req, res) => {
             total_amount: parseFloat(result.rows[0].total_amount),
             notes: result.rows[0].notes,
             file_path: result.rows[0].file_path,
-            status: result.rows[0].status,
+            status: result.rows[0].status || 'pending',
             created_at: result.rows[0].created_at,
             updated_at: result.rows[0].updated_at
         };
@@ -567,6 +597,10 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
                 message: 'قاعدة البيانات غير متاحة'
             });
         }
+
+        // التحقق من وجود الأعمدة
+        const hasStatusColumn = await checkColumnExists('invoices', 'status');
+        const hasUpdatedAtColumn = await checkColumnExists('invoices', 'updated_at');
 
         client = await pool.connect();
         await client.query('BEGIN');
@@ -667,17 +701,16 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             console.log('📎 تم رفع الملف:', filePath);
         }
 
-        // إدراج الفاتورة
-        const insertQuery = `
+        // بناء استعلام الإدراج ديناميكياً
+        let insertQuery = `
             INSERT INTO invoices (
                 invoice_number, supplier_name, invoice_type, category,
                 invoice_date, amount_before_tax, tax_amount, total_amount,
-                notes, file_path, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            RETURNING id, invoice_number, total_amount
+                notes, file_path
         `;
         
-        const insertResult = await client.query(insertQuery, [
+        let values = `VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10`;
+        let params = [
             finalInvoiceNumber.trim(),
             supplierName.trim(),
             (invoiceType && invoiceType.trim()) || 'عام',
@@ -687,9 +720,21 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             taxAmountNum,
             totalAmount,
             notes ? notes.trim() : null,
-            filePath,
-            'pending'
-        ]);
+            filePath
+        ];
+        
+        let paramCount = 10;
+        
+        // إضافة عمود status إذا كان موجوداً
+        if (hasStatusColumn) {
+            insertQuery += ', status';
+            values += ', $' + (++paramCount);
+            params.push('pending');
+        }
+        
+        insertQuery += ') ' + values + ') RETURNING id, invoice_number, total_amount';
+        
+        const insertResult = await client.query(insertQuery, params);
 
         await client.query('COMMIT');
 
@@ -737,7 +782,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
 
 // ============== APIs أوامر الشراء ==============
 
-// 🛒 API جلب جميع أوامر الشراء - لصفحة أوامر الشراء
+// 🛒 API جلب جميع أوامر الشراء - لصفحة أوامر الشراء (مع حماية من الأعمدة المفقودة)
 router.get('/purchase-orders', async (req, res) => {
     try {
         console.log('🛒 طلب أوامر الشراء...');
@@ -751,6 +796,11 @@ router.get('/purchase-orders', async (req, res) => {
             });
         }
 
+        // التحقق من وجود الأعمدة
+        const hasOrderNumberColumn = await checkColumnExists('purchase_orders', 'order_number');
+        const hasStatusColumn = await checkColumnExists('purchase_orders', 'status');
+        const hasUpdatedAtColumn = await checkColumnExists('purchase_orders', 'updated_at');
+
         const {
             supplier_name,
             status,
@@ -763,9 +813,18 @@ router.get('/purchase-orders', async (req, res) => {
         
         let query = `
             SELECT 
-                id, order_number, supplier_name, description, amount,
-                status, order_date, delivery_date, notes, file_path,
-                created_at, updated_at
+                id,
+                ${hasOrderNumberColumn ? 'order_number,' : 'LPAD(id::text, 4, \'0\') as order_number,'}
+                supplier_name,
+                description,
+                amount,
+                ${hasStatusColumn ? 'status,' : "'pending' as status,"}
+                order_date,
+                delivery_date,
+                notes,
+                file_path,
+                created_at
+                ${hasUpdatedAtColumn ? ', updated_at' : ', created_at as updated_at'}
             FROM purchase_orders
             WHERE 1=1
         `;
@@ -781,7 +840,7 @@ router.get('/purchase-orders', async (req, res) => {
         }
         
         // فلترة حسب الحالة
-        if (status) {
+        if (status && hasStatusColumn) {
             query += ` AND status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
@@ -789,7 +848,11 @@ router.get('/purchase-orders', async (req, res) => {
 
         // البحث العام
         if (search) {
-            query += ` AND (order_number ILIKE $${paramIndex} OR supplier_name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+            if (hasOrderNumberColumn) {
+                query += ` AND (order_number ILIKE $${paramIndex} OR supplier_name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+            } else {
+                query += ` AND (supplier_name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+            }
             params.push(`%${search}%`);
             paramIndex++;
         }
@@ -815,7 +878,7 @@ router.get('/purchase-orders', async (req, res) => {
         
         const orders = result.rows.map(row => ({
             id: row.id,
-            order_number: row.order_number,
+            order_number: row.order_number || String(row.id).padStart(4, '0'),
             supplier_name: row.supplier_name,
             description: row.description,
             amount: parseFloat(row.amount),
@@ -863,6 +926,10 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
                 message: 'قاعدة البيانات غير متاحة'
             });
         }
+
+        // التحقق من وجود الأعمدة
+        const hasOrderNumberColumn = await checkColumnExists('purchase_orders', 'order_number');
+        const hasStatusColumn = await checkColumnExists('purchase_orders', 'status');
 
         client = await pool.connect();
         await client.query('BEGIN');
@@ -940,26 +1007,42 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             console.log('📎 تم رفع الملف:', filePath);
         }
 
-        // إدراج أمر الشراء
-        const insertQuery = `
+        // بناء استعلام الإدراج ديناميكياً
+        let insertQuery = `
             INSERT INTO purchase_orders (
-                order_number, supplier_name, description, amount,
-                status, order_date, delivery_date, notes, file_path
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING id, order_number, amount
+                supplier_name, description, amount, order_date, delivery_date, notes, file_path
         `;
         
-        const insertResult = await client.query(insertQuery, [
-            finalOrderNumber,
+        let values = `VALUES ($1, $2, $3, $4, $5, $6, $7`;
+        let params = [
             supplierName.trim(),
             orderDescription.trim(),
             amount,
-            orderStatus || 'pending',
             orderDate,
             deliveryDate || null,
             orderNotes ? orderNotes.trim() : null,
             filePath
-        ]);
+        ];
+        
+        let paramCount = 7;
+        
+        // إضافة عمود order_number إذا كان موجوداً
+        if (hasOrderNumberColumn) {
+            insertQuery += ', order_number';
+            values += ', $' + (++paramCount);
+            params.push(finalOrderNumber);
+        }
+        
+        // إضافة عمود status إذا كان موجوداً
+        if (hasStatusColumn) {
+            insertQuery += ', status';
+            values += ', $' + (++paramCount);
+            params.push(orderStatus || 'pending');
+        }
+        
+        insertQuery += ') ' + values + ') RETURNING id, amount';
+        
+        const insertResult = await client.query(insertQuery, params);
 
         await client.query('COMMIT');
 
@@ -967,7 +1050,7 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
 
         console.log('✅ تم حفظ أمر الشراء بنجاح:', {
             id: newOrder.id,
-            order_number: newOrder.order_number,
+            order_number: finalOrderNumber,
             amount: parseFloat(newOrder.amount),
             file_uploaded: !!req.file
         });
@@ -977,7 +1060,7 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             message: 'تم حفظ أمر الشراء بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
             data: {
                 id: newOrder.id,
-                order_number: newOrder.order_number,
+                order_number: finalOrderNumber,
                 amount: parseFloat(newOrder.amount),
                 file_uploaded: !!req.file
             }
@@ -1052,65 +1135,6 @@ router.get('/payments/:supplier_name', async (req, res) => {
             success: false,
             message: 'خطأ في جلب المدفوعات: ' + error.message,
             data: []
-        });
-    }
-});
-
-// ============== APIs إضافية مفيدة ==============
-
-// 📈 API تقرير شامل للنظام
-router.get('/reports/summary', async (req, res) => {
-    try {
-        const dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-            return res.json({
-                success: false,
-                message: 'قاعدة البيانات غير متاحة',
-                data: null
-            });
-        }
-
-        const { start_date, end_date } = req.query;
-        
-        let dateFilter = '';
-        let params = [];
-        let paramIndex = 1;
-        
-        if (start_date && end_date) {
-            dateFilter = ` WHERE created_at BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
-            params.push(start_date, end_date);
-        }
-        
-        const summaryQuery = `
-            SELECT 
-                (SELECT COUNT(*) FROM suppliers) as total_suppliers,
-                (SELECT COUNT(*) FROM invoices ${dateFilter}) as total_invoices,
-                (SELECT COUNT(*) FROM purchase_orders ${dateFilter}) as total_orders,
-                (SELECT COALESCE(SUM(total_amount), 0) FROM invoices ${dateFilter}) as total_amount,
-                (SELECT COALESCE(SUM(amount), 0) FROM purchase_orders ${dateFilter}) as total_orders_amount
-        `;
-        
-        const result = await pool.query(summaryQuery, params);
-        const summary = result.rows[0];
-        
-        res.json({
-            success: true,
-            data: {
-                total_suppliers: parseInt(summary.total_suppliers),
-                total_invoices: parseInt(summary.total_invoices),
-                total_orders: parseInt(summary.total_orders),
-                total_amount: parseFloat(summary.total_amount),
-                total_orders_amount: parseFloat(summary.total_orders_amount),
-                period: start_date && end_date ? { start_date, end_date } : null
-            }
-        });
-        
-    } catch (error) {
-        console.error('خطأ في تقرير النظام:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في إنشاء التقرير: ' + error.message,
-            data: null
         });
     }
 });
@@ -1249,12 +1273,12 @@ router.get('/fix-database', async (req, res) => {
         try {
             await client.query(`
                 CREATE OR REPLACE FUNCTION update_updated_at_column()
-                RETURNS TRIGGER AS $
+                RETURNS TRIGGER AS $$
                 BEGIN
                     NEW.updated_at = CURRENT_TIMESTAMP;
                     RETURN NEW;
                 END;
-                $ language 'plpgsql';
+                $$ language 'plpgsql';
             `);
             
             const triggers = [
@@ -1300,76 +1324,6 @@ router.get('/fix-database', async (req, res) => {
         });
     } finally {
         if (client) client.release();
-    }
-});
-
-// 🔍 API للتحقق من بنية قاعدة البيانات
-router.get('/check-database', async (req, res) => {
-    try {
-        const dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-            return res.json({
-                success: false,
-                message: 'قاعدة البيانات غير متاحة'
-            });
-        }
-
-        // فحص الجداول والأعمدة
-        const tablesQuery = `
-            SELECT 
-                table_name,
-                column_name,
-                data_type,
-                is_nullable,
-                column_default
-            FROM information_schema.columns 
-            WHERE table_schema = 'public' 
-            AND table_name IN ('suppliers', 'invoices', 'purchase_orders', 'payments')
-            ORDER BY table_name, ordinal_position
-        `;
-        
-        const result = await pool.query(tablesQuery);
-        
-        // تنظيم النتائج حسب الجدول
-        const tableStructure = {};
-        result.rows.forEach(row => {
-            if (!tableStructure[row.table_name]) {
-                tableStructure[row.table_name] = [];
-            }
-            tableStructure[row.table_name].push({
-                column: row.column_name,
-                type: row.data_type,
-                nullable: row.is_nullable === 'YES',
-                default: row.column_default
-            });
-        });
-        
-        // فحص عدد السجلات
-        const counts = {};
-        for (const table of ['suppliers', 'invoices', 'purchase_orders', 'payments']) {
-            try {
-                const countResult = await pool.query(`SELECT COUNT(*) FROM ${table}`);
-                counts[table] = parseInt(countResult.rows[0].count);
-            } catch (error) {
-                counts[table] = 'خطأ: ' + error.message;
-            }
-        }
-        
-        res.json({
-            success: true,
-            data: {
-                tables: tableStructure,
-                counts: counts,
-                timestamp: new Date().toISOString()
-            }
-        });
-        
-    } catch (error) {
-        console.error('خطأ في فحص قاعدة البيانات:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في فحص قاعدة البيانات: ' + error.message
-        });
     }
 });
 
