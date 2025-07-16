@@ -8,15 +8,16 @@ if (!process.env.DATABASE_URL) {
     console.error('🔧 في Railway: Variables → Add Variable → DATABASE_URL');
 }
 
-// إعداد الاتصال بـ PostgreSQL
+// إعداد الاتصال بـ PostgreSQL مع تحسينات
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 20,
+    max: 10, // تقليل عدد الاتصالات لتجنب التضارب
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
     query_timeout: 30000,
-    keepAlive: true
+    keepAlive: true,
+    application_name: 'ERP-ALRAED'
 });
 
 // مراقبة اتصالات قاعدة البيانات
@@ -66,12 +67,12 @@ async function testConnection() {
         console.log('🕐 الوقت الحالي:', result.rows[0].current_time);
         console.log('📊 إصدار PostgreSQL:', result.rows[0].version.split(' ')[0] + ' ' + result.rows[0].version.split(' ')[1]);
         
-        client.release();
         return true;
     } catch (error) {
         console.error('❌ فشل الاتصال بقاعدة البيانات:', error.message);
-        if (client) client.release();
         return false;
+    } finally {
+        if (client) client.release();
     }
 }
 
@@ -87,7 +88,7 @@ async function initializeDatabase() {
             throw new Error('فشل في الاتصال بقاعدة البيانات');
         }
         
-        // إنشاء الجداول
+        // إنشاء الجداول الأساسية فقط
         await createTables();
         
         console.log('🎉 تم إنشاء وتهيئة قاعدة البيانات بنجاح!');
@@ -113,9 +114,9 @@ async function initializeDatabase() {
     }
 }
 
-// إنشاء الجداول مع الفهارس والقيود
+// إنشاء الجداول الأساسية (بدون فهارس معقدة)
 async function createTables() {
-    console.log('🔧 إنشاء الجداول والفهارس...');
+    console.log('🔧 إنشاء الجداول الأساسية...');
     
     let client;
     try {
@@ -192,15 +193,15 @@ async function createTables() {
         `);
         console.log('✅ جدول المدفوعات (payments) جاهز');
 
-        // إنشاء الفهارس لتحسين الأداء
-        await createIndexes(client);
+        // إنشاء الفهارس الأساسية فقط
+        await createEssentialIndexes(client);
         
         // إنشاء triggers للتحديث التلقائي
         await createTriggers(client);
         
         // إتمام المعاملة
         await client.query('COMMIT');
-        console.log('✅ تم إنشاء جميع الجداول والفهارس بنجاح');
+        console.log('✅ تم إنشاء جميع الجداول بنجاح');
         
     } catch (error) {
         if (client) await client.query('ROLLBACK');
@@ -211,55 +212,33 @@ async function createTables() {
     }
 }
 
-// إنشاء الفهارس لتحسين الأداء
-async function createIndexes(client) {
-    console.log('🔍 إنشاء الفهارس...');
+// إنشاء الفهارس الأساسية فقط (لتجنب التضارب)
+async function createEssentialIndexes(client) {
+    console.log('🔍 إنشاء الفهارس الأساسية...');
     
-    const indexes = [
-        // فهارس الفواتير
-        'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_name ON invoices(supplier_name)',
+    // فهارس أساسية فقط - الأكثر أهمية
+    const essentialIndexes = [
+        'CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_name)',
         'CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices(invoice_date)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_type ON invoices(invoice_type)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_category ON invoices(category)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_amount ON invoices(total_amount)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_created_at ON invoices(created_at)',
         'CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number)',
-        
-        // فهارس المدفوعات
-        'CREATE INDEX IF NOT EXISTS idx_payments_supplier_name ON payments(supplier_name)',
-        'CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date)',
-        'CREATE INDEX IF NOT EXISTS idx_payments_method ON payments(payment_method)',
-        'CREATE INDEX IF NOT EXISTS idx_payments_amount ON payments(amount)',
-        
-        // فهارس أوامر الشراء
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_name ON purchase_orders(supplier_name)',
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_status ON purchase_orders(status)',
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON purchase_orders(order_date)',
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_amount ON purchase_orders(amount)',
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_number ON purchase_orders(order_number)',
-        
-        // فهارس الموردين
         'CREATE INDEX IF NOT EXISTS idx_suppliers_name ON suppliers(name)',
-        'CREATE INDEX IF NOT EXISTS idx_suppliers_created_at ON suppliers(created_at)',
-        
-        // فهارس مركبة للاستعلامات المتكررة
-        'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_date ON invoices(supplier_name, invoice_date)',
-        'CREATE INDEX IF NOT EXISTS idx_invoices_date_amount ON invoices(invoice_date, total_amount)',
-        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier_date ON purchase_orders(supplier_name, order_date)'
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier ON purchase_orders(supplier_name)',
+        'CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON purchase_orders(order_date)'
     ];
     
-    for (const indexQuery of indexes) {
+    for (const indexQuery of essentialIndexes) {
         try {
             await client.query(indexQuery);
+            console.log('✅ تم إنشاء فهرس أساسي');
         } catch (error) {
             if (!error.message.includes('already exists')) {
                 console.warn('⚠️ تحذير في إنشاء فهرس:', error.message);
+                // لا نرمي خطأ، فقط نسجل التحذير
             }
         }
     }
     
-    console.log('✅ تم إنشاء جميع الفهارس بنجاح');
+    console.log('✅ تم إنشاء الفهارس الأساسية');
 }
 
 // إنشاء triggers للتحديث التلقائي
@@ -302,6 +281,7 @@ async function createTriggers(client) {
         
     } catch (error) {
         console.warn('⚠️ خطأ في إنشاء triggers:', error.message);
+        // لا نرمي خطأ، فقط نسجل التحذير
     }
 }
 
@@ -359,6 +339,7 @@ async function validateData() {
         
     } catch (error) {
         console.error('❌ خطأ في فحص البيانات:', error.message);
+        // لا نرمي خطأ، فقط نسجل الخطأ
     }
 }
 
@@ -424,27 +405,37 @@ async function getDatabaseStats() {
             stats.tables[row.table_name] = parseInt(row.row_count);
         });
         
-        // حجم الجداول
-        const sizeQuery = `
-            SELECT 
-                schemaname,
-                tablename,
-                pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
-                pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
-            FROM pg_tables 
-            WHERE schemaname = 'public'
-            ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
-        `;
-        
-        const result = await client.query(sizeQuery);
-        stats.tableSizes = result.rows;
+        // حجم الجداول (بشكل مبسط)
+        try {
+            const sizeQuery = `
+                SELECT 
+                    schemaname,
+                    tablename,
+                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+                FROM pg_tables 
+                WHERE schemaname = 'public'
+                ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+            `;
+            
+            const result = await client.query(sizeQuery);
+            stats.tableSizes = result.rows;
+        } catch (sizeError) {
+            console.warn('⚠️ لا يمكن الحصول على أحجام الجداول:', sizeError.message);
+            stats.tableSizes = [];
+        }
         
         client.release();
         return stats;
         
     } catch (error) {
         console.error('❌ خطأ في جلب إحصائيات قاعدة البيانات:', error.message);
-        return null;
+        return {
+            totalConnections: 0,
+            idleConnections: 0,
+            waitingConnections: 0,
+            tables: {},
+            tableSizes: []
+        };
     }
 }
 
@@ -480,14 +471,14 @@ process.on('SIGHUP', async () => {
     process.exit(0);
 });
 
-// تشغيل تنظيف البيانات كل يوم (اختياري)
+// تشغيل تنظيف البيانات كل يوم (اختياري) - فقط في الإنتاج
 if (process.env.NODE_ENV === 'production') {
     setInterval(cleanupOldData, 24 * 60 * 60 * 1000); // كل 24 ساعة
 }
 
 // تشغيل فحص سلامة البيانات عند بدء التشغيل
 process.nextTick(() => {
-    setTimeout(validateData, 5000); // بعد 5 ثواني من بدء التشغيل
+    setTimeout(validateData, 10000); // بعد 10 ثواني من بدء التشغيل
 });
 
 // تصدير قاعدة البيانات والوظائف
