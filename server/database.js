@@ -12,10 +12,10 @@ if (!process.env.DATABASE_URL) {
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    max: 20, // عدد الاتصالات المتزامنة
+    max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000, // زيادة timeout
-    query_timeout: 30000, // timeout للاستعلامات
+    connectionTimeoutMillis: 10000,
+    query_timeout: 30000,
     keepAlive: true
 });
 
@@ -137,14 +137,14 @@ async function createTables() {
         `);
         console.log('✅ جدول الموردين (suppliers) جاهز');
 
-        // جدول الفواتير
+        // جدول الفواتير مع تحديثات للتوافق مع الصفحات
         await client.query(`
             CREATE TABLE IF NOT EXISTS invoices (
                 id SERIAL PRIMARY KEY,
                 invoice_number VARCHAR(100) NOT NULL UNIQUE,
                 supplier_name VARCHAR(255) NOT NULL,
-                invoice_type VARCHAR(100) NOT NULL,
-                category VARCHAR(100) NOT NULL,
+                invoice_type VARCHAR(100) NOT NULL DEFAULT 'عام',
+                category VARCHAR(100) NOT NULL DEFAULT 'عام',
                 invoice_date DATE NOT NULL,
                 amount_before_tax DECIMAL(12,2) NOT NULL CHECK (amount_before_tax >= 0),
                 tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
@@ -280,8 +280,11 @@ async function createTriggers(client) {
         
         // إنشاء triggers للجداول
         const triggers = [
+            'DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers',
             'CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
+            'DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices',
             'CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
+            'DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders',
             'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()'
         ];
         
@@ -289,7 +292,7 @@ async function createTriggers(client) {
             try {
                 await client.query(triggerQuery);
             } catch (error) {
-                if (!error.message.includes('already exists')) {
+                if (!error.message.includes('already exists') && !error.message.includes('does not exist')) {
                     console.warn('⚠️ تحذير في إنشاء trigger:', error.message);
                 }
             }
@@ -302,17 +305,78 @@ async function createTriggers(client) {
     }
 }
 
+// دالة للتأكد من سلامة البيانات
+async function validateData() {
+    try {
+        console.log('🔍 فحص سلامة البيانات...');
+        
+        const client = await pool.connect();
+        
+        // التأكد من عدم وجود فواتير بدون موردين
+        const orphanedInvoices = await client.query(`
+            SELECT COUNT(*) as count FROM invoices i 
+            WHERE NOT EXISTS (SELECT 1 FROM suppliers s WHERE s.name = i.supplier_name)
+        `);
+        
+        if (parseInt(orphanedInvoices.rows[0].count) > 0) {
+            console.log(`⚠️ وجد ${orphanedInvoices.rows[0].count} فاتورة بدون مورد، سيتم إنشاء الموردين تلقائياً...`);
+            
+            // إنشاء الموردين المفقودين
+            await client.query(`
+                INSERT INTO suppliers (name)
+                SELECT DISTINCT i.supplier_name
+                FROM invoices i
+                WHERE NOT EXISTS (SELECT 1 FROM suppliers s WHERE s.name = i.supplier_name)
+                ON CONFLICT (name) DO NOTHING
+            `);
+            
+            console.log('✅ تم إنشاء الموردين المفقودين');
+        }
+        
+        // التأكد من عدم وجود أوامر شراء بدون موردين
+        const orphanedOrders = await client.query(`
+            SELECT COUNT(*) as count FROM purchase_orders po 
+            WHERE NOT EXISTS (SELECT 1 FROM suppliers s WHERE s.name = po.supplier_name)
+        `);
+        
+        if (parseInt(orphanedOrders.rows[0].count) > 0) {
+            console.log(`⚠️ وجد ${orphanedOrders.rows[0].count} أمر شراء بدون مورد، سيتم إنشاء الموردين تلقائياً...`);
+            
+            // إنشاء الموردين المفقودين
+            await client.query(`
+                INSERT INTO suppliers (name)
+                SELECT DISTINCT po.supplier_name
+                FROM purchase_orders po
+                WHERE NOT EXISTS (SELECT 1 FROM suppliers s WHERE s.name = po.supplier_name)
+                ON CONFLICT (name) DO NOTHING
+            `);
+            
+            console.log('✅ تم إنشاء الموردين المفقودين لأوامر الشراء');
+        }
+        
+        client.release();
+        console.log('✅ فحص سلامة البيانات مكتمل');
+        
+    } catch (error) {
+        console.error('❌ خطأ في فحص البيانات:', error.message);
+    }
+}
+
 // وظيفة تنظيف البيانات القديمة (اختيارية)
 async function cleanupOldData() {
     try {
         console.log('🧹 تنظيف البيانات القديمة...');
         
         // حذف الفواتير الملغية القديمة (أكثر من سنة)
-        await pool.query(`
+        const result = await pool.query(`
             DELETE FROM invoices 
             WHERE status = 'cancelled' 
             AND created_at < NOW() - INTERVAL '1 year'
         `);
+        
+        if (result.rowCount > 0) {
+            console.log(`🗑️ تم حذف ${result.rowCount} فاتورة ملغية قديمة`);
+        }
         
         console.log('✅ تم تنظيف البيانات القديمة');
         
@@ -332,12 +396,41 @@ async function getDatabaseStats() {
             waitingConnections: pool.waitingCount
         };
         
+        // إحصائيات الجداول
+        const tableStats = await client.query(`
+            SELECT 
+                'suppliers' as table_name,
+                COUNT(*) as row_count
+            FROM suppliers
+            UNION ALL
+            SELECT 
+                'invoices' as table_name,
+                COUNT(*) as row_count
+            FROM invoices
+            UNION ALL
+            SELECT 
+                'purchase_orders' as table_name,
+                COUNT(*) as row_count
+            FROM purchase_orders
+            UNION ALL
+            SELECT 
+                'payments' as table_name,
+                COUNT(*) as row_count
+            FROM payments
+        `);
+        
+        stats.tables = {};
+        tableStats.rows.forEach(row => {
+            stats.tables[row.table_name] = parseInt(row.row_count);
+        });
+        
         // حجم الجداول
         const sizeQuery = `
             SELECT 
                 schemaname,
                 tablename,
-                pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+                pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
+                pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
             FROM pg_tables 
             WHERE schemaname = 'public'
             ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
@@ -392,6 +485,11 @@ if (process.env.NODE_ENV === 'production') {
     setInterval(cleanupOldData, 24 * 60 * 60 * 1000); // كل 24 ساعة
 }
 
+// تشغيل فحص سلامة البيانات عند بدء التشغيل
+process.nextTick(() => {
+    setTimeout(validateData, 5000); // بعد 5 ثواني من بدء التشغيل
+});
+
 // تصدير قاعدة البيانات والوظائف
 module.exports = {
     pool,
@@ -399,5 +497,6 @@ module.exports = {
     closeDatabase,
     testConnection,
     getDatabaseStats,
-    cleanupOldData
+    cleanupOldData,
+    validateData
 };
