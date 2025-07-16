@@ -12,7 +12,13 @@ const storage = multer.diskStorage({
         
         // التأكد من وجود مجلد uploads
         if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+            try {
+                fs.mkdirSync(uploadDir, { recursive: true });
+                console.log('✅ تم إنشاء مجلد uploads');
+            } catch (error) {
+                console.error('❌ خطأ في إنشاء مجلد uploads:', error);
+                return cb(error);
+            }
         }
         
         cb(null, uploadDir);
@@ -49,26 +55,49 @@ const upload = multer({
     fileFilter: fileFilter
 });
 
+// دالة مساعدة للتحقق من اتصال قاعدة البيانات
+async function checkDatabaseConnection() {
+    try {
+        const result = await pool.query('SELECT 1');
+        return true;
+    } catch (error) {
+        console.error('❌ خطأ في اتصال قاعدة البيانات:', error.message);
+        return false;
+    }
+}
+
 // ============== APIs الأساسية ==============
 
 // 🧪 API اختبار الاتصال
 router.get('/test', async (req, res) => {
     try {
-        const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
-        res.json({
-            success: true,
-            message: 'الخادم يعمل بنجاح!',
-            database: 'متصل',
-            time: result.rows[0].current_time,
-            version: result.rows[0].db_version,
-            system: 'ERP الرائد - الإصدار 3.2'
-        });
+        const dbConnected = await checkDatabaseConnection();
+        
+        if (dbConnected) {
+            const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+            res.json({
+                success: true,
+                message: 'الخادم يعمل بنجاح!',
+                database: 'متصل ✅',
+                time: result.rows[0].current_time,
+                version: result.rows[0].db_version.split(' ')[0] + ' ' + result.rows[0].db_version.split(' ')[1],
+                system: 'ERP الرائد - الإصدار 3.2'
+            });
+        } else {
+            res.json({
+                success: true,
+                message: 'الخادم يعمل بنجاح!',
+                database: 'غير متصل ❌',
+                warning: 'قاعدة البيانات غير متاحة',
+                system: 'ERP الرائد - الإصدار 3.2'
+            });
+        }
     } catch (error) {
         console.error('خطأ في اختبار قاعدة البيانات:', error);
         res.json({
-            success: true,
-            message: 'الخادم يعمل بنجاح!',
-            database: 'غير متصل',
+            success: false,
+            message: 'خطأ في اختبار النظام',
+            database: 'خطأ في الاتصال ❌',
             error: process.env.NODE_ENV === 'production' ? 'خطأ في قاعدة البيانات' : error.message
         });
     }
@@ -77,21 +106,41 @@ router.get('/test', async (req, res) => {
 // 📊 API إحصائيات النظام الشاملة
 router.get('/stats', async (req, res) => {
     try {
+        console.log('📊 طلب إحصائيات النظام...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: {
+                    suppliersCount: 0,
+                    invoicesCount: 0,
+                    ordersCount: 0,
+                    totalAmount: 0
+                }
+            });
+        }
+
         // عدد الموردين
         const suppliersResult = await pool.query('SELECT COUNT(*) FROM suppliers');
         const suppliersCount = parseInt(suppliersResult.rows[0].count);
+        console.log(`👥 عدد الموردين: ${suppliersCount}`);
 
         // عدد الفواتير
         const invoicesResult = await pool.query('SELECT COUNT(*) FROM invoices');
         const invoicesCount = parseInt(invoicesResult.rows[0].count);
+        console.log(`📋 عدد الفواتير: ${invoicesCount}`);
 
         // عدد أوامر الشراء
         const ordersResult = await pool.query('SELECT COUNT(*) FROM purchase_orders');
         const ordersCount = parseInt(ordersResult.rows[0].count);
+        console.log(`🛒 عدد أوامر الشراء: ${ordersCount}`);
 
         // إجمالي المبالغ
         const totalAmountResult = await pool.query('SELECT COALESCE(SUM(total_amount), 0) as total FROM invoices');
         const totalAmount = parseFloat(totalAmountResult.rows[0].total);
+        console.log(`💰 إجمالي المبالغ: ${totalAmount}`);
 
         res.json({
             success: true,
@@ -106,7 +155,7 @@ router.get('/stats', async (req, res) => {
         console.error('خطأ في جلب الإحصائيات:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب الإحصائيات',
+            message: 'خطأ في جلب الإحصائيات: ' + error.message,
             data: {
                 suppliersCount: 0,
                 invoicesCount: 0,
@@ -119,9 +168,21 @@ router.get('/stats', async (req, res) => {
 
 // ============== APIs الموردين ==============
 
-// 🏢 API جلب الموردين مع إحصائياتهم المفصلة - مُحدث
+// 🏢 API جلب الموردين مع إحصائياتهم المفصلة
 router.get('/suppliers-with-stats', async (req, res) => {
     try {
+        console.log('🏢 طلب الموردين مع الإحصائيات...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: [],
+                total: 0
+            });
+        }
+
         const query = `
             SELECT 
                 s.id,
@@ -152,6 +213,8 @@ router.get('/suppliers-with-stats', async (req, res) => {
             created_at: row.created_at
         }));
 
+        console.log(`👥 تم جلب ${suppliers.length} مورد`);
+
         res.json({
             success: true,
             data: suppliers,
@@ -161,7 +224,7 @@ router.get('/suppliers-with-stats', async (req, res) => {
         console.error('خطأ في جلب الموردين:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب الموردين',
+            message: 'خطأ في جلب الموردين: ' + error.message,
             data: [],
             total: 0
         });
@@ -171,6 +234,15 @@ router.get('/suppliers-with-stats', async (req, res) => {
 // 👥 API جلب قائمة الموردين للإكمال التلقائي
 router.get('/suppliers', async (req, res) => {
     try {
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: []
+            });
+        }
+
         const { search } = req.query;
         let query = 'SELECT id, name FROM suppliers';
         let params = [];
@@ -192,7 +264,7 @@ router.get('/suppliers', async (req, res) => {
         console.error('خطأ في جلب قائمة الموردين:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب قائمة الموردين',
+            message: 'خطأ في جلب قائمة الموردين: ' + error.message,
             data: []
         });
     }
@@ -203,6 +275,18 @@ router.get('/suppliers', async (req, res) => {
 // 📋 API جلب جميع الفواتير مع إمكانية الفلترة
 router.get('/invoices', async (req, res) => {
     try {
+        console.log('📋 طلب الفواتير...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: [],
+                total: 0
+            });
+        }
+
         const { 
             supplier_name, 
             search, 
@@ -211,6 +295,8 @@ router.get('/invoices', async (req, res) => {
             limit = 100,
             offset = 0
         } = req.query;
+        
+        console.log('🔍 فلاتر البحث:', { supplier_name, search, date_from, date_to });
         
         let query = `
             SELECT 
@@ -283,6 +369,8 @@ router.get('/invoices', async (req, res) => {
             updated_at: row.updated_at
         }));
 
+        console.log(`📋 تم جلب ${invoices.length} فاتورة`);
+
         res.json({
             success: true,
             data: invoices,
@@ -293,7 +381,7 @@ router.get('/invoices', async (req, res) => {
         console.error('خطأ في جلب الفواتير:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب الفواتير',
+            message: 'خطأ في جلب الفواتير: ' + error.message,
             data: [],
             total: 0
         });
@@ -303,6 +391,17 @@ router.get('/invoices', async (req, res) => {
 // 📋 API جلب أحدث الفواتير
 router.get('/recent-invoices', async (req, res) => {
     try {
+        console.log('📋 طلب أحدث الفواتير...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: []
+            });
+        }
+
         const { limit = 5 } = req.query;
         
         const query = `
@@ -333,6 +432,8 @@ router.get('/recent-invoices', async (req, res) => {
             category: row.category
         }));
 
+        console.log(`📋 تم جلب ${invoices.length} فاتورة حديثة`);
+
         res.json({
             success: true,
             data: invoices
@@ -341,7 +442,7 @@ router.get('/recent-invoices', async (req, res) => {
         console.error('خطأ في جلب الفواتير:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب الفواتير',
+            message: 'خطأ في جلب الفواتير: ' + error.message,
             data: []
         });
     }
@@ -349,9 +450,23 @@ router.get('/recent-invoices', async (req, res) => {
 
 // ➕ API إضافة فاتورة جديدة مع رفع الملفات
 router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
-    const client = await pool.connect();
+    let client;
     
     try {
+        console.log('➕ طلب إضافة فاتورة جديدة...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة'
+            });
+        }
+
+        client = await pool.connect();
         await client.query('BEGIN');
         
         const {
@@ -365,8 +480,16 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             notes
         } = req.body;
 
-        console.log('البيانات المستلمة:', req.body);
-        console.log('الملف المرفوع:', req.file ? req.file.filename : 'لا يوجد ملف');
+        console.log('البيانات المستلمة:', {
+            invoiceNumber,
+            supplierName,
+            invoiceType,
+            category,
+            invoiceDate,
+            amountBeforeTax,
+            taxAmount,
+            fileUploaded: !!req.file
+        });
 
         // التحقق من البيانات المطلوبة
         if (!invoiceNumber || !supplierName || !invoiceType || !category || !invoiceDate || !amountBeforeTax) {
@@ -423,6 +546,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
                 'INSERT INTO suppliers (name) VALUES ($1)',
                 [supplierName.trim()]
             );
+            console.log('✅ تم إضافة مورد جديد:', supplierName);
         }
 
         // حساب المبلغ الإجمالي
@@ -432,6 +556,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         let filePath = null;
         if (req.file) {
             filePath = req.file.filename; // حفظ اسم الملف فقط
+            console.log('📎 تم رفع الملف:', filePath);
         }
 
         // إدراج الفاتورة
@@ -466,6 +591,13 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
 
         await client.query('COMMIT');
 
+        console.log('✅ تم حفظ الفاتورة بنجاح:', {
+            id: insertResult.rows[0].id,
+            invoice_number: invoiceNumber.trim(),
+            total_amount: totalAmount,
+            file_uploaded: !!req.file
+        });
+
         res.json({
             success: true,
             message: 'تم حفظ الفاتورة بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
@@ -478,7 +610,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         });
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) await client.query('ROLLBACK');
         console.error('خطأ في إضافة الفاتورة:', error);
         
         // حذف الملف المرفوع في حالة الخطأ
@@ -495,7 +627,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             message: 'حدث خطأ أثناء حفظ الفاتورة: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message)
         });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 
@@ -504,6 +636,17 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
 // 🛒 API جلب جميع أوامر الشراء
 router.get('/purchase-orders', async (req, res) => {
     try {
+        console.log('🛒 طلب أوامر الشراء...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: []
+            });
+        }
+
         const {
             supplier_name,
             status,
@@ -590,6 +733,8 @@ router.get('/purchase-orders', async (req, res) => {
             updated_at: row.updated_at
         }));
 
+        console.log(`🛒 تم جلب ${orders.length} أمر شراء`);
+
         res.json({
             success: true,
             data: orders,
@@ -600,7 +745,7 @@ router.get('/purchase-orders', async (req, res) => {
         console.error('خطأ في جلب أوامر الشراء:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب أوامر الشراء',
+            message: 'خطأ في جلب أوامر الشراء: ' + error.message,
             data: []
         });
     }
@@ -608,9 +753,23 @@ router.get('/purchase-orders', async (req, res) => {
 
 // 🛒 API إضافة أمر شراء جديد
 router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => {
-    const client = await pool.connect();
+    let client;
     
     try {
+        console.log('🛒 طلب إضافة أمر شراء جديد...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة'
+            });
+        }
+
+        client = await pool.connect();
         await client.query('BEGIN');
         
         const {
@@ -624,7 +783,13 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             orderNotes
         } = req.body;
 
-        console.log('بيانات أمر الشراء المستلمة:', req.body);
+        console.log('بيانات أمر الشراء المستلمة:', {
+            supplierName,
+            orderDescription: orderDescription?.substring(0, 50) + '...',
+            orderAmount,
+            orderDate,
+            fileUploaded: !!req.file
+        });
 
         // التحقق من البيانات المطلوبة
         if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
@@ -657,12 +822,14 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
                 'INSERT INTO suppliers (name) VALUES ($1)',
                 [supplierName.trim()]
             );
+            console.log('✅ تم إضافة مورد جديد:', supplierName);
         }
 
         // مسار الملف المرفوع
         let filePath = null;
         if (req.file) {
             filePath = req.file.filename;
+            console.log('📎 تم رفع الملف:', filePath);
         }
 
         // إدراج أمر الشراء
@@ -695,6 +862,13 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
 
         await client.query('COMMIT');
 
+        console.log('✅ تم حفظ أمر الشراء بنجاح:', {
+            id: insertResult.rows[0].id,
+            order_number: finalOrderNumber,
+            amount: parseFloat(orderAmount),
+            file_uploaded: !!req.file
+        });
+
         res.json({
             success: true,
             message: 'تم حفظ أمر الشراء بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
@@ -707,7 +881,7 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         });
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) await client.query('ROLLBACK');
         console.error('خطأ في إضافة أمر الشراء:', error);
         
         // حذف الملف المرفوع في حالة الخطأ
@@ -721,10 +895,10 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         
         res.json({
             success: false,
-            message: 'حدث خطأ أثناء حفظ أمر الشراء'
+            message: 'حدث خطأ أثناء حفظ أمر الشراء: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message)
         });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 });
 
@@ -733,6 +907,15 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
 // 💰 API جلب مدفوعات مورد
 router.get('/payments/:supplier_name', async (req, res) => {
     try {
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: []
+            });
+        }
+
         const supplierName = decodeURIComponent(req.params.supplier_name);
         
         const result = await pool.query(`
@@ -769,7 +952,7 @@ router.get('/payments/:supplier_name', async (req, res) => {
         console.error('خطأ في جلب المدفوعات:', error);
         res.json({
             success: false,
-            message: 'خطأ في جلب المدفوعات',
+            message: 'خطأ في جلب المدفوعات: ' + error.message,
             data: []
         });
     }
@@ -791,7 +974,7 @@ router.use((error, req, res, next) => {
         
         return res.json({
             success: false,
-            message: 'خطأ في رفع الملف'
+            message: 'خطأ في رفع الملف: ' + error.message
         });
     }
     
@@ -804,7 +987,7 @@ router.use((error, req, res, next) => {
     
     res.json({
         success: false,
-        message: 'حدث خطأ في الخادم'
+        message: 'حدث خطأ في الخادم: ' + error.message
     });
 });
 
