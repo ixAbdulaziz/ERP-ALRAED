@@ -11,6 +11,7 @@
     "build": "echo \"Build process completed\"",
     "setup": "node create-uploads.js && echo \"Setup completed\"",
     "fix-uploads": "node create-uploads.js",
+    "fix-db": "node -e \"require('./server/database.js').initializeDatabase().then(() => process.exit(0)).catch(e => {console.error(e); process.exit(1)})\"",
     "clean": "rm -rf uploads/* && node create-uploads.js"
   },
   "dependencies": {
