@@ -4,10 +4,12 @@
   "description": "نظام إدارة المشتريات - الرائد | نظام شامل لإدارة الموردين والفواتير",
   "main": "server/app.js",
   "scripts": {
+    "prestart": "node create-uploads.js",
     "start": "node server/app.js",
     "dev": "nodemon server/app.js",
     "test": "echo \"Tests not implemented yet\"",
-    "build": "echo \"Build process completed\""
+    "build": "echo \"Build process completed\"",
+    "setup": "node create-uploads.js"
   },
   "dependencies": {
     "express": "^4.18.2",
