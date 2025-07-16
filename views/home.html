@@ -202,7 +202,7 @@
                     <div class="stats-icon text-primary">
                         <i class="fas fa-users"></i>
                     </div>
-                    <div class="stats-number text-primary" id="suppliersCount">24</div>
+                    <div class="stats-number text-primary" id="suppliersCount">0</div>
                     <div class="stats-label">إجمالي الموردين</div>
                 </div>
             </div>
@@ -211,7 +211,7 @@
                     <div class="stats-icon text-success">
                         <i class="fas fa-file-invoice"></i>
                     </div>
-                    <div class="stats-number text-success" id="invoicesCount">156</div>
+                    <div class="stats-number text-success" id="invoicesCount">0</div>
                     <div class="stats-label">إجمالي الفواتير</div>
                 </div>
             </div>
@@ -220,7 +220,7 @@
                     <div class="stats-icon text-warning">
                         <i class="fas fa-shopping-cart"></i>
                     </div>
-                    <div class="stats-number text-warning" id="ordersCount">89</div>
+                    <div class="stats-number text-warning" id="ordersCount">0</div>
                     <div class="stats-label">أوامر الشراء</div>
                 </div>
             </div>
@@ -229,7 +229,7 @@
                     <div class="stats-icon text-danger">
                         <i class="fas fa-dollar-sign"></i>
                     </div>
-                    <div class="stats-number text-danger" id="totalAmount">245,500</div>
+                    <div class="stats-number text-danger" id="totalAmount">0</div>
                     <div class="stats-label">المبالغ المستحقة (ريال)</div>
                 </div>
             </div>
@@ -252,38 +252,11 @@
                     
                     <!-- Suppliers Grid -->
                     <div class="row" id="suppliersGrid">
-                        <div class="col-md-6">
-                            <div class="supplier-card" onclick="viewSupplier('شركة الإمدادات الذكية')">
-                                <h5 class="fw-bold mb-2">شركة الإمدادات الذكية</h5>
-                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 23</p>
-                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 45,200 ريال</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="supplier-card" onclick="viewSupplier('مؤسسة التقنية المتقدمة')">
-                                <h5 class="fw-bold mb-2">مؤسسة التقنية المتقدمة</h5>
-                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 18</p>
-                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 32,800 ريال</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="supplier-card" onclick="viewSupplier('شركة الحلول المبتكرة')">
-                                <h5 class="fw-bold mb-2">شركة الحلول المبتكرة</h5>
-                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 31</p>
-                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 67,500 ريال</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="supplier-card" onclick="viewSupplier('مكتب الخدمات الشاملة')">
-                                <h5 class="fw-bold mb-2">مكتب الخدمات الشاملة</h5>
-                                <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> عدد الفواتير: 12</p>
-                                <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ المستحق: 28,900 ريال</p>
-                            </div>
-                        </div>
+                        <!-- سيتم ملء الموردين بواسطة JavaScript -->
                     </div>
                     
                     <div class="text-center mt-4">
-                        <button class="btn btn-primary btn-custom">
+                        <button class="btn btn-primary btn-custom" onclick="window.location.href='/add'">
                             <i class="fas fa-plus me-1"></i> إضافة مورد جديد
                         </button>
                     </div>
@@ -299,70 +272,7 @@
                     </h3>
                     
                     <div id="recentInvoices">
-                        <div class="invoice-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">فاتورة #001256</h6>
-                                    <small class="text-muted">شركة الإمدادات الذكية</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold text-success">4,500 ريال</div>
-                                    <small class="text-muted">اليوم</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="invoice-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">فاتورة #001255</h6>
-                                    <small class="text-muted">مؤسسة التقنية المتقدمة</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold text-success">7,200 ريال</div>
-                                    <small class="text-muted">أمس</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="invoice-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">فاتورة #001254</h6>
-                                    <small class="text-muted">شركة الحلول المبتكرة</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold text-success">12,800 ريال</div>
-                                    <small class="text-muted">قبل يومين</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="invoice-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">فاتورة #001253</h6>
-                                    <small class="text-muted">مكتب الخدمات الشاملة</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold text-success">3,400 ريال</div>
-                                    <small class="text-muted">قبل 3 أيام</small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="invoice-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">فاتورة #001252</h6>
-                                    <small class="text-muted">شركة الإمدادات الذكية</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold text-success">8,900 ريال</div>
-                                    <small class="text-muted">قبل أسبوع</small>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- سيتم ملء الفواتير بواسطة JavaScript -->
                     </div>
                     
                     <div class="text-center mt-4">
@@ -403,7 +313,7 @@
         
         // View supplier details
         function viewSupplier(supplierName) {
-            alert(`عرض تفاصيل المورد: ${supplierName}\n\nسيتم تطوير هذه الوظيفة في المرحلة القادمة.`);
+            window.location.href = `/view?supplier=${encodeURIComponent(supplierName)}`;
         }
         
         // Animate numbers on page load
