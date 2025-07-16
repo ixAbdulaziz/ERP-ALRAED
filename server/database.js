@@ -159,7 +159,7 @@ async function createTables() {
         `);
         console.log('✅ جدول الفواتير (invoices) جاهز');
 
-        // جدول أوامر الشراء
+        // جدول أوامر الشراء - مع جميع الأعمدة المطلوبة
         await client.query(`
             CREATE TABLE IF NOT EXISTS purchase_orders (
                 id SERIAL PRIMARY KEY,
@@ -176,6 +176,29 @@ async function createTables() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        
+        // التأكد من وجود جميع الأعمدة المطلوبة في جدول purchase_orders
+        try {
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS order_date DATE DEFAULT CURRENT_DATE
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS delivery_date DATE
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            `);
+            console.log('✅ تم التأكد من وجود جميع أعمدة purchase_orders');
+        } catch (alterError) {
+            console.warn('⚠️ تحذير في تعديل purchase_orders:', alterError.message);
+        }
         console.log('✅ جدول أوامر الشراء (purchase_orders) جاهز');
 
         // جدول المدفوعات
