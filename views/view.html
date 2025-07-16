@@ -62,8 +62,6 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
-            padding-bottom: 10px;
         }
 
         .suppliers-grid {
@@ -80,7 +78,6 @@
             color: white;
             transition: all 0.3s ease;
             cursor: pointer;
-            position: relative;
             border: 3px solid transparent;
         }
 
@@ -92,18 +89,6 @@
         .supplier-card.active {
             border-color: #fff;
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
-        }
-
-        .supplier-actions {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-
-        .supplier-actions .btn {
-            padding: 5px 8px;
-            font-size: 0.75rem;
-            margin-right: 3px;
         }
 
         .invoices-section {
@@ -134,37 +119,6 @@
             font-size: 0.85rem;
             vertical-align: middle;
             text-align: center;
-            cursor: pointer;
-            position: relative;
-            user-select: none;
-        }
-
-        .table thead th.sortable:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
-        }
-
-        .table thead th.sortable::after {
-            content: '\f0dc';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            opacity: 0.6;
-            transition: all 0.3s ease;
-        }
-
-        .table thead th.sortable.sort-asc::after {
-            content: '\f0de';
-            opacity: 1;
-            color: #28a745;
-        }
-
-        .table thead th.sortable.sort-desc::after {
-            content: '\f0dd';
-            opacity: 1;
-            color: #dc3545;
         }
 
         .table tbody td {
@@ -177,8 +131,6 @@
 
         .table tbody tr:hover {
             background: rgba(102, 126, 234, 0.05);
-            transform: translateY(-1px);
-            transition: all 0.3s ease;
         }
 
         .amount-cell {
@@ -193,28 +145,10 @@
             color: #667eea;
         }
 
-        .action-btn {
-            margin: 0 2px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-        }
-
         .badge-custom {
             font-size: 0.75rem;
             padding: 6px 12px;
             border-radius: 15px;
-        }
-
-        .payments-section {
-            margin-top: 20px;
-            border-top: 3px solid rgba(102, 126, 234, 0.2);
-            padding-top: 20px;
         }
 
         .form-control, .form-select {
@@ -229,29 +163,17 @@
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
 
-        .btn {
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
             border-radius: 8px;
             font-weight: 600;
             transition: all 0.3s ease;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-        }
-
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .summary-card {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
         }
 
         .empty-state {
@@ -264,49 +186,6 @@
             font-size: 4rem;
             color: #ccc;
             margin-bottom: 20px;
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 0;
-        }
-
-        .modal-content {
-            border-radius: 15px;
-            border: none;
-        }
-
-        .file-preview {
-            max-width: 100%;
-            max-height: 200px;
-            border-radius: 10px;
-            border: 1px solid #ddd;
-        }
-
-        .notes-cell {
-            max-width: 180px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: rgba(100, 116, 139, 0.05);
-            text-align: right;
-            direction: rtl;
-        }
-
-        .notes-cell:hover {
-            background: rgba(100, 116, 139, 0.15);
-            transform: scale(1.02);
-        }
-
-        .notes-cell.empty {
-            color: #6c757d;
-            font-style: italic;
         }
 
         .fade-in {
@@ -337,19 +216,7 @@
             color: #667eea !important;
         }
 
-        .alert-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            min-width: 300px;
-        }
-
         @media (max-width: 768px) {
-            .main-container {
-                padding: 15px;
-            }
-            
             .suppliers-grid {
                 grid-template-columns: 1fr;
             }
@@ -357,11 +224,6 @@
             .table thead th, .table tbody td {
                 padding: 8px 5px;
                 font-size: 0.8rem;
-            }
-            
-            .action-btn {
-                padding: 4px 6px;
-                font-size: 0.7rem;
             }
         }
     </style>
@@ -399,12 +261,9 @@
 
         <!-- Page Header -->
         <div class="page-header fade-in">
-            <h1><i class="fas fa-table"></i> إدارة الفواتير والموردين</h1>
-            <p>إدارة شاملة للموردين وفواتيرهم والمستحقات مع إمكانيات متقدمة للبحث والتصفية</p>
+            <h1><i class="fas fa-table"></i> عرض الفواتير والموردين</h1>
+            <p>عرض وإدارة جميع الفواتير حسب الموردين</p>
         </div>
-
-        <!-- Alert Container -->
-        <div class="alert-container" id="alertContainer"></div>
 
         <!-- Suppliers Section -->
         <div class="section-card fade-in">
@@ -450,40 +309,9 @@
                 <i class="fas fa-user-tie"></i>
                 <span id="selectedSupplierName">المورد المحدد</span>
                 <div class="ms-auto">
-                    <button class="btn btn-outline-warning btn-sm" onclick="editSupplierName()">
-                        <i class="fas fa-edit"></i> تعديل الاسم
-                    </button>
                     <button class="btn btn-outline-success btn-sm" onclick="exportToExcel()">
                         <i class="fas fa-file-excel"></i> تصدير Excel
                     </button>
-                </div>
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="row mb-3">
-                <div class="col-md-3 col-6">
-                    <div class="summary-card">
-                        <h5 id="totalInvoices">0</h5>
-                        <small>إجمالي الفواتير</small>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="summary-card">
-                        <h5 id="totalAmount">0 ريال</h5>
-                        <small>إجمالي المبلغ</small>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="summary-card">
-                        <h5 id="totalPaid">0 ريال</h5>
-                        <small>المدفوع</small>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="summary-card">
-                        <h5 id="totalRemaining">0 ريال</h5>
-                        <small>المتبقي</small>
-                    </div>
                 </div>
             </div>
         </div>
@@ -514,30 +342,15 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th class="sortable" data-column="invoice_number" onclick="sortTable('invoice_number')">
-                                رقم الفاتورة <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="invoice_type" onclick="sortTable('invoice_type')">
-                                نوع الفاتورة <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="category" onclick="sortTable('category')">
-                                اسم الفئة <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="invoice_date" onclick="sortTable('invoice_date')">
-                                التاريخ <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="amount_before_tax" onclick="sortTable('amount_before_tax')">
-                                المبلغ بدون ضريبة <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="tax_amount" onclick="sortTable('tax_amount')">
-                                الضريبة <i class="fas fa-sort"></i>
-                            </th>
-                            <th class="sortable" data-column="total_amount" onclick="sortTable('total_amount')">
-                                الإجمالي <i class="fas fa-sort"></i>
-                            </th>
+                            <th>رقم الفاتورة</th>
+                            <th>نوع الفاتورة</th>
+                            <th>اسم الفئة</th>
+                            <th>التاريخ</th>
+                            <th>المبلغ بدون ضريبة</th>
+                            <th>الضريبة</th>
+                            <th>الإجمالي</th>
                             <th>ملاحظات</th>
                             <th>المرفق</th>
-                            <th>الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="invoicesTableBody">
@@ -555,260 +368,36 @@
                     <i class="fas fa-plus me-1"></i> إضافة فاتورة جديدة
                 </button>
             </div>
-
-            <!-- Payments Section -->
-            <div class="payments-section">
-                <div class="section-title">
-                    <i class="fas fa-money-bill-wave"></i>
-                    المستحقات والمدفوعات
-                    <div class="ms-auto">
-                        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-                            <i class="fas fa-plus"></i> إضافة دفعة
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th width="20%">التاريخ</th>
-                                <th width="25%">المبلغ المدفوع</th>
-                                <th width="40%">ملاحظات</th>
-                                <th width="15%">الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentsTableBody">
-                            <!-- سيتم ملء المدفوعات بواسطة JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Empty State for Payments -->
-                <div class="empty-state" id="paymentsEmptyState">
-                    <i class="fas fa-hand-holding-usd"></i>
-                    <h5>لا توجد مدفوعات مسجلة</h5>
-                    <p class="text-muted mb-4">سجل أول دفعة لهذا المورد</p>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-                        <i class="fas fa-plus me-1"></i> إضافة دفعة جديدة
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Invoice Modal -->
-    <div class="modal fade" id="editInvoiceModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i> تحرير الفاتورة</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editInvoiceForm">
-                        <input type="hidden" id="editInvoiceId">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="editInvoiceNumber" class="form-label">رقم الفاتورة</label>
-                                <input type="text" class="form-control" id="editInvoiceNumber" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editInvoiceDate" class="form-label">تاريخ الفاتورة</label>
-                                <input type="date" class="form-control" id="editInvoiceDate" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="editInvoiceType" class="form-label">نوع الفاتورة</label>
-                                <input type="text" class="form-control" id="editInvoiceType" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="editCategory" class="form-label">اسم الفئة</label>
-                                <input type="text" class="form-control" id="editCategory" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="editAmountBeforeTax" class="form-label">المبلغ بدون ضريبة</label>
-                                <input type="number" class="form-control" id="editAmountBeforeTax" step="0.01" required>
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="editTaxAmount" class="form-label">قيمة الضريبة</label>
-                                <input type="number" class="form-control" id="editTaxAmount" step="0.01">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label for="editTotalAmount" class="form-label">الإجمالي</label>
-                                <input type="number" class="form-control" id="editTotalAmount" step="0.01" readonly>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="editNotes" class="form-label">ملاحظات</label>
-                            <textarea class="form-control" id="editNotes" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="editInvoiceFile" class="form-label">تحديث الملف المرفق</label>
-                            <input type="file" class="form-control" id="editInvoiceFile" accept=".pdf,.jpg,.jpeg,.png">
-                            <small class="text-muted">اترك فارغاً للاحتفاظ بالملف الحالي</small>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-primary" onclick="saveInvoiceChanges()">حفظ التغييرات</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteInvoiceModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger">
-                    <h5 class="modal-title text-white"><i class="fas fa-trash me-2"></i> تأكيد الحذف</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="text-center mb-3">
-                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
-                    </div>
-                    <h5 class="text-center">هل أنت متأكد من حذف هذه الفاتورة؟</h5>
-                    <p class="text-center text-muted">لا يمكن التراجع عن هذا الإجراء</p>
-                    <div id="deleteInvoiceDetails" class="bg-light p-3 rounded"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmDeleteInvoice()">حذف الفاتورة</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Payment Modal -->
-    <div class="modal fade" id="addPaymentModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-money-bill-wave me-2"></i> إضافة دفعة جديدة</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addPaymentForm">
-                        <div class="mb-3">
-                            <label for="paymentDate" class="form-label">تاريخ الدفع</label>
-                            <input type="date" class="form-control" id="paymentDate" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="paymentAmount" class="form-label">المبلغ المدفوع</label>
-                            <input type="number" class="form-control" id="paymentAmount" step="0.01" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="paymentNotes" class="form-label">ملاحظات</label>
-                            <textarea class="form-control" id="paymentNotes" rows="3"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" class="btn btn-success" onclick="savePayment()">حفظ الدفعة</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- View File Modal -->
-    <div class="modal fade" id="viewFileModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file me-2"></i> عرض المرفق</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <div id="filePreviewContainer">
-                        <!-- سيتم عرض الملف هنا -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-primary" id="downloadFileBtn">
-                        <i class="fas fa-download"></i> تحميل
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <!-- SheetJS for Excel Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <script>
         // Global variables
         let suppliers = [];
         let selectedSupplier = null;
         let currentSupplierInvoices = [];
-        let currentSupplierPayments = [];
         let filteredInvoices = [];
-        let sortColumn = null;
-        let sortDirection = 'asc';
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 تحميل صفحة إدارة الفواتير...');
+            console.log('🚀 تحميل صفحة عرض الفواتير...');
             loadSuppliers();
             
-            // Set today's date for payment form
-            document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
-            
-            // Setup calculation for edit form
-            setupEditFormCalculations();
+            // Check if supplier is pre-selected from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const supplierParam = urlParams.get('supplier');
+            if (supplierParam) {
+                // Wait for suppliers to load first
+                setTimeout(() => {
+                    selectSupplier(supplierParam);
+                }, 1000);
+            }
         });
 
-        // Setup edit form calculations
-        function setupEditFormCalculations() {
-            const amountInput = document.getElementById('editAmountBeforeTax');
-            const taxInput = document.getElementById('editTaxAmount');
-            const totalInput = document.getElementById('editTotalAmount');
-            
-            function calculateTotal() {
-                const amount = parseFloat(amountInput.value) || 0;
-                const tax = parseFloat(taxInput.value) || 0;
-                totalInput.value = (amount + tax).toFixed(2);
-            }
-            
-            amountInput.addEventListener('input', calculateTotal);
-            taxInput.addEventListener('input', calculateTotal);
-        }
-
-        // Show alert function
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById('alertContainer');
-            const alertId = 'alert_' + Date.now();
-            
-            const alertElement = document.createElement('div');
-            alertElement.id = alertId;
-            alertElement.className = `alert alert-${type} alert-dismissible fade show`;
-            alertElement.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            
-            alertContainer.appendChild(alertElement);
-            
-            // Auto remove after 5 seconds
-            setTimeout(() => {
-                const element = document.getElementById(alertId);
-                if (element) {
-                    element.remove();
-                }
-            }, 5000);
-        }
-
-        // Load all suppliers from API
+        // Load all suppliers
         async function loadSuppliers() {
             try {
                 const response = await fetch('/api/suppliers-with-stats');
@@ -826,7 +415,6 @@
                 }
             } catch (error) {
                 console.error('خطأ في الاتصال:', error);
-                showAlert('خطأ في الاتصال بالخادم', 'danger');
                 suppliers = [];
                 renderSuppliersGrid();
             }
@@ -856,11 +444,6 @@
                 
                 html += `
                     <div class="supplier-card ${isActive ? 'active' : ''}" onclick="selectSupplier('${supplier.name}')">
-                        <div class="supplier-actions">
-                            <button class="btn btn-outline-light btn-sm" onclick="editSupplierName('${supplier.name}', event)" title="تحرير">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
                         <h5 class="fw-bold mb-2">${supplier.name}</h5>
                         <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> الفواتير: ${supplier.invoice_count || 0}</p>
                         <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ: ${(supplier.total_amount || 0).toLocaleString()} ريال</p>
@@ -880,10 +463,8 @@
             renderSuppliersGrid();
             showSelectedSupplierInfo();
             
-            // Load supplier data
+            // Load supplier invoices
             await loadSupplierInvoices(supplierName);
-            await loadSupplierPayments(supplierName);
-            updateSupplierSummary();
         }
 
         // Show selected supplier info
@@ -902,7 +483,7 @@
             }
         }
 
-        // Load supplier invoices by name - FIXED
+        // Load supplier invoices
         async function loadSupplierInvoices(supplierName) {
             try {
                 const response = await fetch(`/api/invoices?supplier_name=${encodeURIComponent(supplierName)}`);
@@ -921,69 +502,10 @@
                 }
             } catch (error) {
                 console.error('خطأ في تحميل فواتير المورد:', error);
-                showAlert('خطأ في تحميل فواتير المورد', 'danger');
                 currentSupplierInvoices = [];
                 filteredInvoices = [];
                 renderInvoicesTable();
             }
-        }
-
-        // Load supplier payments - NEW
-        async function loadSupplierPayments(supplierName) {
-            try {
-                const response = await fetch(`/api/payments/${encodeURIComponent(supplierName)}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    currentSupplierPayments = result.data || [];
-                    renderPaymentsTable();
-                    console.log(`💰 تم تحميل ${currentSupplierPayments.length} دفعة للمورد: ${supplierName}`);
-                } else {
-                    console.error('خطأ في تحميل مدفوعات المورد:', result.message);
-                    currentSupplierPayments = [];
-                    renderPaymentsTable();
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل المدفوعات:', error);
-                currentSupplierPayments = [];
-                renderPaymentsTable();
-            }
-        }
-
-        // Render payments table - NEW
-        function renderPaymentsTable() {
-            const tbody = document.getElementById('paymentsTableBody');
-            const emptyState = document.getElementById('paymentsEmptyState');
-            
-            if (currentSupplierPayments.length === 0) {
-                tbody.innerHTML = '';
-                emptyState.style.display = 'block';
-                return;
-            }
-            
-            emptyState.style.display = 'none';
-            
-            tbody.innerHTML = currentSupplierPayments.map(payment => {
-                const formattedDate = new Date(payment.payment_date).toLocaleDateString('ar-SA');
-                
-                return `
-                    <tr>
-                        <td>${formattedDate}</td>
-                        <td class="amount-cell fw-bold text-success">${payment.amount.toLocaleString()} ريال</td>
-                        <td class="text-end">
-                            ${payment.notes ? 
-                                `<span class="notes-cell" title="${payment.notes}">${payment.notes.length > 30 ? payment.notes.substring(0, 30) + '...' : payment.notes}</span>` : 
-                                '<span class="text-muted">لا توجد ملاحظات</span>'
-                            }
-                        </td>
-                        <td>
-                            <button class="btn btn-outline-danger btn-sm action-btn" onclick="deletePayment(${payment.id})" title="حذف">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
         }
 
         // Filter suppliers
@@ -1007,11 +529,6 @@
                 
                 html += `
                     <div class="supplier-card ${isActive ? 'active' : ''}" onclick="selectSupplier('${supplier.name}')">
-                        <div class="supplier-actions">
-                            <button class="btn btn-outline-light btn-sm" onclick="editSupplierName('${supplier.name}', event)" title="تحرير">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
                         <h5 class="fw-bold mb-2">${supplier.name}</h5>
                         <p class="mb-1"><i class="fas fa-file-invoice me-1"></i> الفواتير: ${supplier.invoice_count || 0}</p>
                         <p class="mb-0"><i class="fas fa-dollar-sign me-1"></i> المبلغ: ${(supplier.total_amount || 0).toLocaleString()} ريال</p>
@@ -1034,50 +551,6 @@
                 );
             }
             
-            renderInvoicesTable();
-        }
-
-        // Sort table
-        function sortTable(column) {
-            if (sortColumn === column) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                sortColumn = column;
-                sortDirection = 'asc';
-            }
-
-            // Update sort indicators
-            document.querySelectorAll('.sortable i').forEach(icon => {
-                icon.className = 'fas fa-sort';
-            });
-
-            const currentHeader = document.querySelector(`[data-column="${column}"] i`);
-            currentHeader.className = sortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
-
-            // Sort the data
-            filteredInvoices.sort((a, b) => {
-                let aVal = a[column];
-                let bVal = b[column];
-
-                // Handle different data types
-                if (column.includes('amount') || column.includes('tax')) {
-                    aVal = parseFloat(aVal);
-                    bVal = parseFloat(bVal);
-                } else if (column === 'invoice_date') {
-                    aVal = new Date(aVal);
-                    bVal = new Date(bVal);
-                } else {
-                    aVal = String(aVal).toLowerCase();
-                    bVal = String(bVal).toLowerCase();
-                }
-
-                if (sortDirection === 'asc') {
-                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-                } else {
-                    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
-                }
-            });
-
             renderInvoicesTable();
         }
 
@@ -1107,419 +580,35 @@
                         <td class="amount-cell">${parseFloat(invoice.amount_before_tax).toLocaleString()}</td>
                         <td class="amount-cell">${parseFloat(invoice.tax_amount || 0).toLocaleString()}</td>
                         <td class="amount-cell fw-bold">${parseFloat(invoice.total_amount).toLocaleString()}</td>
-                        <td>${formatNotes(invoice.notes)}</td>
+                        <td>${invoice.notes || 'لا توجد ملاحظات'}</td>
                         <td>
                             ${hasFile ? 
-                                `<button class="btn btn-outline-success btn-sm action-btn" onclick="viewFile('${invoice.file_path}')" title="عرض المرفق">
-                                    <i class="fas fa-paperclip"></i>
-                                </button>` : 
+                                `<a href="/uploads/${invoice.file_path}" target="_blank" class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-paperclip"></i> عرض
+                                </a>` : 
                                 '<span class="text-muted">لا يوجد</span>'
                             }
-                        </td>
-                        <td>
-                            <button class="btn btn-outline-warning btn-sm action-btn" onclick="editInvoice(${invoice.id})" title="تحرير">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm action-btn" onclick="deleteInvoice(${invoice.id})" title="حذف">
-                                <i class="fas fa-trash"></i>
-                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        // Format notes for display
-        function formatNotes(notes) {
-            if (!notes || notes.trim() === '') {
-                return '<span class="notes-cell empty">لا توجد ملاحظات</span>';
-            }
-            
-            if (notes.length > 30) {
-                return `<span class="notes-cell" title="${notes}">${notes.substring(0, 30)}...</span>`;
-            }
-            
-            return `<span class="notes-cell">${notes}</span>`;
-        }
-
-        // Update supplier summary - FIXED to use real payments data
-        function updateSupplierSummary() {
-            const totalInvoices = currentSupplierInvoices.length;
-            const totalAmount = currentSupplierInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0);
-            const totalPaid = currentSupplierPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-            const totalRemaining = totalAmount - totalPaid;
-            
-            // Update summary
-            document.getElementById('totalInvoices').textContent = totalInvoices;
-            document.getElementById('totalAmount').textContent = totalAmount.toLocaleString() + ' ريال';
-            document.getElementById('totalPaid').textContent = totalPaid.toLocaleString() + ' ريال';
-            document.getElementById('totalRemaining').textContent = totalRemaining.toLocaleString() + ' ريال';
-        }
-
-        // Edit invoice
-        function editInvoice(invoiceId) {
-            const invoice = currentSupplierInvoices.find(inv => inv.id === invoiceId);
-            if (!invoice) return;
-            
-            // Fill edit form
-            document.getElementById('editInvoiceId').value = invoice.id;
-            document.getElementById('editInvoiceNumber').value = invoice.invoice_number;
-            document.getElementById('editInvoiceDate').value = invoice.invoice_date;
-            document.getElementById('editInvoiceType').value = invoice.invoice_type;
-            document.getElementById('editCategory').value = invoice.category;
-            document.getElementById('editAmountBeforeTax').value = invoice.amount_before_tax;
-            document.getElementById('editTaxAmount').value = invoice.tax_amount || 0;
-            document.getElementById('editTotalAmount').value = invoice.total_amount;
-            document.getElementById('editNotes').value = invoice.notes || '';
-            
-            // Show modal
-            new bootstrap.Modal(document.getElementById('editInvoiceModal')).show();
-        }
-
-        // Save invoice changes - FIXED
-        async function saveInvoiceChanges() {
-            const invoiceId = document.getElementById('editInvoiceId').value;
-            const formData = new FormData();
-            
-            formData.append('invoice_number', document.getElementById('editInvoiceNumber').value);
-            formData.append('invoice_date', document.getElementById('editInvoiceDate').value);
-            formData.append('invoice_type', document.getElementById('editInvoiceType').value);
-            formData.append('category', document.getElementById('editCategory').value);
-            formData.append('amount_before_tax', document.getElementById('editAmountBeforeTax').value);
-            formData.append('tax_amount', document.getElementById('editTaxAmount').value);
-            formData.append('total_amount', document.getElementById('editTotalAmount').value);
-            formData.append('notes', document.getElementById('editNotes').value);
-            
-            const fileInput = document.getElementById('editInvoiceFile');
-            if (fileInput.files.length > 0) {
-                formData.append('invoiceFile', fileInput.files[0]);
-            }
-            
-            try {
-                const saveBtn = document.querySelector('#editInvoiceModal .btn-primary');
-                const originalText = saveBtn.textContent;
-                saveBtn.textContent = 'جاري الحفظ...';
-                saveBtn.disabled = true;
-                
-                const response = await fetch(`/api/invoices/${invoiceId}`, {
-                    method: 'PUT',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم تحديث الفاتورة بنجاح!', 'success');
-                    bootstrap.Modal.getInstance(document.getElementById('editInvoiceModal')).hide();
-                    
-                    await Promise.all([
-                        loadSupplierInvoices(selectedSupplier.name),
-                        loadSuppliers()
-                    ]);
-                    
-                    updateSupplierSummary();
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في تحديث الفاتورة:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            } finally {
-                const saveBtn = document.querySelector('#editInvoiceModal .btn-primary');
-                saveBtn.textContent = 'حفظ التغييرات';
-                saveBtn.disabled = false;
-            }
-        }
-
-        // Delete invoice
-        function deleteInvoice(invoiceId) {
-            const invoice = currentSupplierInvoices.find(inv => inv.id === invoiceId);
-            if (!invoice) return;
-            
-            // Show invoice details in delete modal
-            document.getElementById('deleteInvoiceDetails').innerHTML = `
-                <strong>رقم الفاتورة:</strong> ${invoice.invoice_number}<br>
-                <strong>التاريخ:</strong> ${new Date(invoice.invoice_date).toLocaleDateString('ar-SA')}<br>
-                <strong>المبلغ:</strong> ${parseFloat(invoice.total_amount).toLocaleString()} ريال
-            `;
-            
-            // Store invoice ID for deletion
-            document.getElementById('deleteInvoiceModal').setAttribute('data-invoice-id', invoiceId);
-            
-            // Show modal
-            new bootstrap.Modal(document.getElementById('deleteInvoiceModal')).show();
-        }
-
-        // Confirm delete invoice - FIXED
-        async function confirmDeleteInvoice() {
-            const modal = document.getElementById('deleteInvoiceModal');
-            const invoiceId = modal.getAttribute('data-invoice-id');
-            
-            try {
-                const deleteBtn = document.querySelector('#deleteInvoiceModal .btn-danger');
-                const originalText = deleteBtn.textContent;
-                deleteBtn.textContent = 'جاري الحذف...';
-                deleteBtn.disabled = true;
-                
-                const response = await fetch(`/api/invoices/${invoiceId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم حذف الفاتورة بنجاح!', 'success');
-                    bootstrap.Modal.getInstance(modal).hide();
-                    
-                    await Promise.all([
-                        loadSupplierInvoices(selectedSupplier.name),
-                        loadSuppliers()
-                    ]);
-                    
-                    updateSupplierSummary();
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في حذف الفاتورة:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            } finally {
-                const deleteBtn = document.querySelector('#deleteInvoiceModal .btn-danger');
-                deleteBtn.textContent = 'حذف الفاتورة';
-                deleteBtn.disabled = false;
-            }
-        }
-
-        // View file - FIXED file paths
-        function viewFile(filePath) {
-            const modal = new bootstrap.Modal(document.getElementById('viewFileModal'));
-            const container = document.getElementById('filePreviewContainer');
-            const downloadBtn = document.getElementById('downloadFileBtn');
-            
-            // Fix file path
-            const fullPath = filePath.startsWith('/uploads/') ? filePath : `/uploads/${filePath}`;
-            
-            downloadBtn.onclick = () => window.open(fullPath, '_blank');
-            
-            const fileExtension = filePath.split('.').pop().toLowerCase();
-            
-            if (fileExtension === 'pdf') {
-                container.innerHTML = `
-                    <div class="text-center">
-                        <embed src="${fullPath}" type="application/pdf" width="100%" height="500px" style="border-radius: 10px;">
-                        <p class="mt-3">
-                            <i class="fas fa-info-circle text-info me-1"></i>
-                            إذا لم يظهر الملف، <a href="${fullPath}" target="_blank" class="text-primary">انقر هنا لفتحه في نافذة جديدة</a>
-                        </p>
-                    </div>
-                `;
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension)) {
-                container.innerHTML = `
-                    <div class="text-center">
-                        <img src="${fullPath}" class="file-preview img-fluid" alt="مرفق الفاتورة" style="max-height: 500px; border-radius: 10px;">
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-file fa-4x text-muted mb-3"></i>
-                        <h5 class="text-muted">لا يمكن معاينة هذا النوع من الملفات</h5>
-                        <p class="text-muted">انقر على زر "تحميل" لحفظ الملف على جهازك</p>
-                        <div class="mt-3">
-                            <small class="text-info">
-                                <i class="fas fa-file me-1"></i>
-                                نوع الملف: ${fileExtension.toUpperCase()}
-                            </small>
-                        </div>
-                    </div>
-                `;
-            }
-            
-            modal.show();
-        }
-
-        // Export to Excel
+        // Export to Excel (placeholder)
         function exportToExcel() {
-            if (!selectedSupplier || currentSupplierInvoices.length === 0) {
-                showAlert('لا توجد بيانات للتصدير', 'warning');
+            if (!selectedSupplier || filteredInvoices.length === 0) {
+                alert('لا توجد بيانات للتصدير');
                 return;
             }
             
-            // Prepare data for Excel
-            const invoicesData = filteredInvoices.map(invoice => ({
-                'رقم الفاتورة': invoice.invoice_number,
-                'نوع الفاتورة': invoice.invoice_type,
-                'اسم الفئة': invoice.category,
-                'التاريخ': new Date(invoice.invoice_date).toLocaleDateString('ar-SA'),
-                'المبلغ بدون ضريبة': parseFloat(invoice.amount_before_tax),
-                'الضريبة': parseFloat(invoice.tax_amount || 0),
-                'الإجمالي': parseFloat(invoice.total_amount),
-                'ملاحظات': invoice.notes || ''
-            }));
-            
-            // Create workbook
-            const wb = XLSX.utils.book_new();
-            
-            // Add invoices sheet
-            const wsInvoices = XLSX.utils.json_to_sheet(invoicesData);
-            XLSX.utils.book_append_sheet(wb, wsInvoices, 'الفواتير');
-            
-            // Save file
-            const fileName = `فواتير_${selectedSupplier.name}_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
-            
-            showAlert('تم تصدير البيانات بنجاح!', 'success');
+            alert('ميزة التصدير قيد التطوير');
         }
 
-        // Edit supplier name - FIXED to work with API
-        function editSupplierName(supplierName, event) {
-            if (event) event.stopPropagation();
-            
-            const newName = prompt('أدخل الاسم الجديد للمورد:', supplierName);
-            
-            if (newName && newName.trim() && newName !== supplierName) {
-                updateSupplierName(supplierName, newName.trim());
-            }
-        }
-
-        // Update supplier name - FIXED
-        async function updateSupplierName(oldName, newName) {
-            try {
-                const supplier = suppliers.find(s => s.name === oldName);
-                if (!supplier) {
-                    showAlert('المورد غير موجود', 'danger');
-                    return;
-                }
-                
-                const response = await fetch(`/api/suppliers/${supplier.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ name: newName })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم تحديث اسم المورد بنجاح!', 'success');
-                    
-                    await loadSuppliers();
-                    
-                    if (selectedSupplier && selectedSupplier.name === oldName) {
-                        selectedSupplier.name = newName;
-                        await loadSupplierInvoices(newName);
-                        await loadSupplierPayments(newName);
-                        updateSupplierSummary();
-                    }
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في تحديث اسم المورد:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            }
-        }
-
-        // Save payment - FIXED
-        async function savePayment() {
-            if (!selectedSupplier) {
-                showAlert('لم يتم تحديد مورد', 'danger');
-                return;
-            }
-            
-            const paymentData = {
-                supplier_name: selectedSupplier.name,
-                payment_date: document.getElementById('paymentDate').value,
-                amount: parseFloat(document.getElementById('paymentAmount').value),
-                notes: document.getElementById('paymentNotes').value
-            };
-            
-            if (!paymentData.payment_date || !paymentData.amount || paymentData.amount <= 0) {
-                showAlert('يرجى ملء جميع الحقول المطلوبة بشكل صحيح', 'warning');
-                return;
-            }
-            
-            try {
-                const saveBtn = document.querySelector('#addPaymentModal .btn-success');
-                const originalText = saveBtn.textContent;
-                saveBtn.textContent = 'جاري الحفظ...';
-                saveBtn.disabled = true;
-                
-                const response = await fetch('/api/payments', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(paymentData)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert(`تم حفظ دفعة بقيمة ${paymentData.amount.toLocaleString()} ريال بنجاح!`, 'success');
-                    
-                    document.getElementById('addPaymentForm').reset();
-                    document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
-                    
-                    bootstrap.Modal.getInstance(document.getElementById('addPaymentModal')).hide();
-                    
-                    await Promise.all([
-                        loadSuppliers(),
-                        loadSupplierPayments(selectedSupplier.name)
-                    ]);
-                    
-                    updateSupplierSummary();
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في حفظ الدفعة:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            } finally {
-                const saveBtn = document.querySelector('#addPaymentModal .btn-success');
-                saveBtn.textContent = 'حفظ الدفعة';
-                saveBtn.disabled = false;
-            }
-        }
-
-        // Delete payment - NEW
-        async function deletePayment(paymentId) {
-            if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/payments/${paymentId}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showAlert('تم حذف الدفعة بنجاح!', 'success');
-                    
-                    if (selectedSupplier) {
-                        await Promise.all([
-                            loadSuppliers(),
-                            loadSupplierPayments(selectedSupplier.name)
-                        ]);
-                        updateSupplierSummary();
-                    }
-                } else {
-                    showAlert('خطأ: ' + result.message, 'danger');
-                }
-            } catch (error) {
-                console.error('خطأ في حذف الدفعة:', error);
-                showAlert('حدث خطأ في الاتصال بالخادم', 'danger');
-            }
-        }
-
-        // Add invoice to supplier (redirect to add page)
+        // Add invoice to supplier
         function addInvoiceToSupplier() {
             if (!selectedSupplier) return;
             
-            // Store selected supplier in session storage and redirect
+            // Store selected supplier and redirect
             sessionStorage.setItem('preselectedSupplier', selectedSupplier.name);
             window.location.href = '/add';
         }
@@ -1531,7 +620,6 @@
             
             if (selectedSupplier) {
                 loadSupplierInvoices(selectedSupplier.name);
-                loadSupplierPayments(selectedSupplier.name);
             }
         }
 
