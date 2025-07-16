@@ -178,6 +178,7 @@ async function createTables() {
         `);
         
         // التأكد من وجود جميع الأعمدة المطلوبة في جدول purchase_orders
+        console.log('🔧 التحقق من أعمدة purchase_orders...');
         try {
             await client.query(`
                 ALTER TABLE purchase_orders 
@@ -190,6 +191,18 @@ async function createTables() {
             await client.query(`
                 ALTER TABLE purchase_orders 
                 ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS notes TEXT
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS file_path VARCHAR(500)
+            `);
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS order_number VARCHAR(100)
             `);
             await client.query(`
                 ALTER TABLE purchase_orders 
