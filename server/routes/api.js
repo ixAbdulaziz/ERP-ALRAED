@@ -103,7 +103,7 @@ router.get('/test', async (req, res) => {
     }
 });
 
-// 📊 API إحصائيات النظام الشاملة
+// 📊 API إحصائيات النظام الشاملة - للصفحة الرئيسية
 router.get('/stats', async (req, res) => {
     try {
         console.log('📊 طلب إحصائيات النظام...');
@@ -122,34 +122,30 @@ router.get('/stats', async (req, res) => {
             });
         }
 
-        // عدد الموردين
-        const suppliersResult = await pool.query('SELECT COUNT(*) FROM suppliers');
-        const suppliersCount = parseInt(suppliersResult.rows[0].count);
-        console.log(`👥 عدد الموردين: ${suppliersCount}`);
+        // استعلام شامل للحصول على جميع الإحصائيات دفعة واحدة
+        const statsQuery = `
+            SELECT 
+                (SELECT COUNT(*) FROM suppliers) as suppliers_count,
+                (SELECT COUNT(*) FROM invoices) as invoices_count,
+                (SELECT COUNT(*) FROM purchase_orders) as orders_count,
+                (SELECT COALESCE(SUM(total_amount), 0) FROM invoices) as total_amount
+        `;
+        
+        const result = await pool.query(statsQuery);
+        const stats = result.rows[0];
+        
+        const responseData = {
+            suppliersCount: parseInt(stats.suppliers_count) || 0,
+            invoicesCount: parseInt(stats.invoices_count) || 0,
+            ordersCount: parseInt(stats.orders_count) || 0,
+            totalAmount: parseFloat(stats.total_amount) || 0
+        };
 
-        // عدد الفواتير
-        const invoicesResult = await pool.query('SELECT COUNT(*) FROM invoices');
-        const invoicesCount = parseInt(invoicesResult.rows[0].count);
-        console.log(`📋 عدد الفواتير: ${invoicesCount}`);
-
-        // عدد أوامر الشراء
-        const ordersResult = await pool.query('SELECT COUNT(*) FROM purchase_orders');
-        const ordersCount = parseInt(ordersResult.rows[0].count);
-        console.log(`🛒 عدد أوامر الشراء: ${ordersCount}`);
-
-        // إجمالي المبالغ
-        const totalAmountResult = await pool.query('SELECT COALESCE(SUM(total_amount), 0) as total FROM invoices');
-        const totalAmount = parseFloat(totalAmountResult.rows[0].total);
-        console.log(`💰 إجمالي المبالغ: ${totalAmount}`);
+        console.log('📊 الإحصائيات:', responseData);
 
         res.json({
             success: true,
-            data: {
-                suppliersCount,
-                invoicesCount,
-                ordersCount,
-                totalAmount: Math.round(totalAmount * 100) / 100
-            }
+            data: responseData
         });
     } catch (error) {
         console.error('خطأ في جلب الإحصائيات:', error);
@@ -168,7 +164,7 @@ router.get('/stats', async (req, res) => {
 
 // ============== APIs الموردين ==============
 
-// 🏢 API جلب الموردين مع إحصائياتهم المفصلة
+// 🏢 API جلب الموردين مع إحصائياتهم المفصلة - للصفحة الرئيسية وصفحة العرض
 router.get('/suppliers-with-stats', async (req, res) => {
     try {
         console.log('🏢 طلب الموردين مع الإحصائيات...');
@@ -187,16 +183,30 @@ router.get('/suppliers-with-stats', async (req, res) => {
             SELECT 
                 s.id,
                 s.name,
-                COUNT(DISTINCT i.id) as invoice_count,
-                COALESCE(SUM(i.total_amount), 0) as total_amount,
-                COUNT(DISTINCT po.id) as purchase_orders_count,
-                COALESCE(SUM(po.amount), 0) as purchase_orders_total,
-                MAX(i.created_at) as last_invoice_date,
+                COALESCE(i.invoice_count, 0) as invoice_count,
+                COALESCE(i.total_amount, 0) as total_amount,
+                COALESCE(po.purchase_orders_count, 0) as purchase_orders_count,
+                COALESCE(po.purchase_orders_total, 0) as purchase_orders_total,
+                i.last_invoice_date,
                 s.created_at
             FROM suppliers s
-            LEFT JOIN invoices i ON s.name = i.supplier_name
-            LEFT JOIN purchase_orders po ON s.name = po.supplier_name
-            GROUP BY s.id, s.name, s.created_at
+            LEFT JOIN (
+                SELECT 
+                    supplier_name,
+                    COUNT(*) as invoice_count,
+                    SUM(total_amount) as total_amount,
+                    MAX(created_at) as last_invoice_date
+                FROM invoices
+                GROUP BY supplier_name
+            ) i ON s.name = i.supplier_name
+            LEFT JOIN (
+                SELECT 
+                    supplier_name,
+                    COUNT(*) as purchase_orders_count,
+                    SUM(amount) as purchase_orders_total
+                FROM purchase_orders
+                GROUP BY supplier_name
+            ) po ON s.name = po.supplier_name
             ORDER BY s.created_at DESC
         `;
         
@@ -205,10 +215,10 @@ router.get('/suppliers-with-stats', async (req, res) => {
         const suppliers = result.rows.map(row => ({
             id: row.id,
             name: row.name,
-            invoice_count: parseInt(row.invoice_count),
-            total_amount: parseFloat(row.total_amount),
-            purchase_orders_count: parseInt(row.purchase_orders_count),
-            purchase_orders_total: parseFloat(row.purchase_orders_total),
+            invoice_count: parseInt(row.invoice_count) || 0,
+            total_amount: parseFloat(row.total_amount) || 0,
+            purchase_orders_count: parseInt(row.purchase_orders_count) || 0,
+            purchase_orders_total: parseFloat(row.purchase_orders_total) || 0,
             last_invoice_date: row.last_invoice_date,
             created_at: row.created_at
         }));
@@ -272,7 +282,7 @@ router.get('/suppliers', async (req, res) => {
 
 // ============== APIs الفواتير ==============
 
-// 📋 API جلب جميع الفواتير مع إمكانية الفلترة
+// 📋 API جلب جميع الفواتير مع إمكانية الفلترة - لصفحة العرض
 router.get('/invoices', async (req, res) => {
     try {
         console.log('📋 طلب الفواتير...');
@@ -292,11 +302,13 @@ router.get('/invoices', async (req, res) => {
             search, 
             date_from, 
             date_to,
+            invoice_type,
+            category,
             limit = 100,
             offset = 0
         } = req.query;
         
-        console.log('🔍 فلاتر البحث:', { supplier_name, search, date_from, date_to });
+        console.log('🔍 فلاتر البحث:', { supplier_name, search, date_from, date_to, invoice_type, category });
         
         let query = `
             SELECT 
@@ -311,6 +323,7 @@ router.get('/invoices', async (req, res) => {
                 total_amount,
                 notes,
                 file_path,
+                status,
                 created_at,
                 updated_at
             FROM invoices
@@ -320,17 +333,31 @@ router.get('/invoices', async (req, res) => {
         const params = [];
         let paramIndex = 1;
         
-        // فلترة حسب المورد
+        // فلترة حسب المورد - مهم لصفحة العرض
         if (supplier_name) {
             query += ` AND supplier_name = $${paramIndex}`;
             params.push(supplier_name);
             paramIndex++;
         }
         
-        // البحث في رقم الفاتورة أو نوع الفاتورة أو الفئة
+        // البحث في رقم الفاتورة أو نوع الفاتورة أو الفئة أو الملاحظات
         if (search) {
             query += ` AND (invoice_number ILIKE $${paramIndex} OR invoice_type ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR notes ILIKE $${paramIndex})`;
             params.push(`%${search}%`);
+            paramIndex++;
+        }
+        
+        // فلترة حسب نوع الفاتورة
+        if (invoice_type) {
+            query += ` AND invoice_type = $${paramIndex}`;
+            params.push(invoice_type);
+            paramIndex++;
+        }
+        
+        // فلترة حسب الفئة
+        if (category) {
+            query += ` AND category = $${paramIndex}`;
+            params.push(category);
             paramIndex++;
         }
         
@@ -347,7 +374,7 @@ router.get('/invoices', async (req, res) => {
             paramIndex++;
         }
         
-        // الترتيب
+        // الترتيب والحد
         query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(parseInt(limit), parseInt(offset));
         
@@ -365,6 +392,7 @@ router.get('/invoices', async (req, res) => {
             total_amount: parseFloat(row.total_amount),
             notes: row.notes,
             file_path: row.file_path,
+            status: row.status,
             created_at: row.created_at,
             updated_at: row.updated_at
         }));
@@ -388,7 +416,7 @@ router.get('/invoices', async (req, res) => {
     }
 });
 
-// 📋 API جلب أحدث الفواتير
+// 📋 API جلب أحدث الفواتير - للصفحة الرئيسية
 router.get('/recent-invoices', async (req, res) => {
     try {
         console.log('📋 طلب أحدث الفواتير...');
@@ -413,7 +441,8 @@ router.get('/recent-invoices', async (req, res) => {
                 invoice_date,
                 created_at,
                 invoice_type,
-                category
+                category,
+                status
             FROM invoices
             ORDER BY created_at DESC
             LIMIT $1
@@ -429,7 +458,8 @@ router.get('/recent-invoices', async (req, res) => {
             invoice_date: row.invoice_date,
             created_at: row.created_at,
             invoice_type: row.invoice_type,
-            category: row.category
+            category: row.category,
+            status: row.status
         }));
 
         console.log(`📋 تم جلب ${invoices.length} فاتورة حديثة`);
@@ -448,7 +478,79 @@ router.get('/recent-invoices', async (req, res) => {
     }
 });
 
-// ➕ API إضافة فاتورة جديدة مع رفع الملفات
+// 🔍 API جلب فاتورة محددة بـ ID
+router.get('/invoices/:id', async (req, res) => {
+    try {
+        const invoiceId = parseInt(req.params.id);
+        
+        if (isNaN(invoiceId)) {
+            return res.json({
+                success: false,
+                message: 'رقم الفاتورة غير صحيح'
+            });
+        }
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: null
+            });
+        }
+
+        const query = `
+            SELECT 
+                id, invoice_number, supplier_name, invoice_type, category,
+                invoice_date, amount_before_tax, tax_amount, total_amount,
+                notes, file_path, status, created_at, updated_at
+            FROM invoices
+            WHERE id = $1
+        `;
+        
+        const result = await pool.query(query, [invoiceId]);
+        
+        if (result.rows.length === 0) {
+            return res.json({
+                success: false,
+                message: 'الفاتورة غير موجودة',
+                data: null
+            });
+        }
+        
+        const invoice = {
+            id: result.rows[0].id,
+            invoice_number: result.rows[0].invoice_number,
+            supplier_name: result.rows[0].supplier_name,
+            invoice_type: result.rows[0].invoice_type,
+            category: result.rows[0].category,
+            invoice_date: result.rows[0].invoice_date,
+            amount_before_tax: parseFloat(result.rows[0].amount_before_tax),
+            tax_amount: parseFloat(result.rows[0].tax_amount || 0),
+            total_amount: parseFloat(result.rows[0].total_amount),
+            notes: result.rows[0].notes,
+            file_path: result.rows[0].file_path,
+            status: result.rows[0].status,
+            created_at: result.rows[0].created_at,
+            updated_at: result.rows[0].updated_at
+        };
+
+        res.json({
+            success: true,
+            data: invoice
+        });
+        
+    } catch (error) {
+        console.error('خطأ في جلب الفاتورة:', error);
+        res.json({
+            success: false,
+            message: 'خطأ في جلب الفاتورة: ' + error.message,
+            data: null
+        });
+    }
+});
+
+// ➕ API إضافة فاتورة جديدة مع رفع الملفات - لصفحة الإضافة
 router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
     let client;
     
@@ -492,14 +594,14 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         });
 
         // التحقق من البيانات المطلوبة
-        if (!invoiceNumber || !supplierName || !invoiceType || !category || !invoiceDate || !amountBeforeTax) {
+        if (!supplierName || !invoiceDate || !amountBeforeTax) {
             await client.query('ROLLBACK');
             if (req.file) {
                 fs.unlinkSync(req.file.path);
             }
             return res.json({
                 success: false,
-                message: 'جميع الحقول المطلوبة يجب ملؤها'
+                message: 'الحقول المطلوبة: اسم المورد، تاريخ الفاتورة، والمبلغ قبل الضريبة'
             });
         }
 
@@ -514,14 +616,20 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             }
             return res.json({
                 success: false,
-                message: 'مبلغ الفاتورة غير صحيح'
+                message: 'مبلغ الفاتورة يجب أن يكون رقماً صحيحاً وأكبر من الصفر'
             });
+        }
+
+        // إنشاء رقم فاتورة تلقائي إذا لم يتم تقديمه
+        let finalInvoiceNumber = invoiceNumber;
+        if (!finalInvoiceNumber || !finalInvoiceNumber.trim()) {
+            finalInvoiceNumber = 'INV-' + Date.now();
         }
 
         // التحقق من عدم تكرار رقم الفاتورة
         const duplicateCheck = await client.query(
             'SELECT id FROM invoices WHERE invoice_number = $1',
-            [invoiceNumber.trim()]
+            [finalInvoiceNumber.trim()]
         );
         
         if (duplicateCheck.rows.length > 0) {
@@ -531,7 +639,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             }
             return res.json({
                 success: false,
-                message: 'رقم الفاتورة موجود مسبقاً'
+                message: 'رقم الفاتورة موجود مسبقاً: ' + finalInvoiceNumber.trim()
             });
         }
 
@@ -562,39 +670,35 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         // إدراج الفاتورة
         const insertQuery = `
             INSERT INTO invoices (
-                invoice_number,
-                supplier_name,
-                invoice_type,
-                category,
-                invoice_date,
-                amount_before_tax,
-                tax_amount,
-                total_amount,
-                notes,
-                file_path
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING id
+                invoice_number, supplier_name, invoice_type, category,
+                invoice_date, amount_before_tax, tax_amount, total_amount,
+                notes, file_path, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id, invoice_number, total_amount
         `;
         
         const insertResult = await client.query(insertQuery, [
-            invoiceNumber.trim(),
+            finalInvoiceNumber.trim(),
             supplierName.trim(),
-            invoiceType.trim(),
-            category.trim(),
+            (invoiceType && invoiceType.trim()) || 'عام',
+            (category && category.trim()) || 'عام',
             invoiceDate,
             amountBeforeTaxNum,
             taxAmountNum,
             totalAmount,
             notes ? notes.trim() : null,
-            filePath
+            filePath,
+            'pending'
         ]);
 
         await client.query('COMMIT');
 
+        const newInvoice = insertResult.rows[0];
+
         console.log('✅ تم حفظ الفاتورة بنجاح:', {
-            id: insertResult.rows[0].id,
-            invoice_number: invoiceNumber.trim(),
-            total_amount: totalAmount,
+            id: newInvoice.id,
+            invoice_number: newInvoice.invoice_number,
+            total_amount: parseFloat(newInvoice.total_amount),
             file_uploaded: !!req.file
         });
 
@@ -602,9 +706,9 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             success: true,
             message: 'تم حفظ الفاتورة بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
             data: {
-                id: insertResult.rows[0].id,
-                invoice_number: invoiceNumber.trim(),
-                total_amount: totalAmount,
+                id: newInvoice.id,
+                invoice_number: newInvoice.invoice_number,
+                total_amount: parseFloat(newInvoice.total_amount),
                 file_uploaded: !!req.file
             }
         });
@@ -633,7 +737,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
 
 // ============== APIs أوامر الشراء ==============
 
-// 🛒 API جلب جميع أوامر الشراء
+// 🛒 API جلب جميع أوامر الشراء - لصفحة أوامر الشراء
 router.get('/purchase-orders', async (req, res) => {
     try {
         console.log('🛒 طلب أوامر الشراء...');
@@ -659,18 +763,9 @@ router.get('/purchase-orders', async (req, res) => {
         
         let query = `
             SELECT 
-                id,
-                order_number,
-                supplier_name,
-                description,
-                amount,
-                status,
-                order_date,
-                delivery_date,
-                notes,
-                file_path,
-                created_at,
-                updated_at
+                id, order_number, supplier_name, description, amount,
+                status, order_date, delivery_date, notes, file_path,
+                created_at, updated_at
             FROM purchase_orders
             WHERE 1=1
         `;
@@ -712,7 +807,7 @@ router.get('/purchase-orders', async (req, res) => {
             paramIndex++;
         }
         
-        // الترتيب
+        // الترتيب والحد
         query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(parseInt(limit), parseInt(offset));
         
@@ -751,7 +846,7 @@ router.get('/purchase-orders', async (req, res) => {
     }
 });
 
-// 🛒 API إضافة أمر شراء جديد
+// 🛒 API إضافة أمر شراء جديد - لصفحة أوامر الشراء
 router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => {
     let client;
     
@@ -799,7 +894,20 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             }
             return res.json({
                 success: false,
-                message: 'جميع الحقول المطلوبة يجب ملؤها'
+                message: 'الحقول المطلوبة: اسم المورد، البيان، المبلغ، والتاريخ'
+            });
+        }
+
+        // التحقق من صحة المبلغ
+        const amount = parseFloat(orderAmount);
+        if (isNaN(amount) || amount < 0) {
+            await client.query('ROLLBACK');
+            if (req.file) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.json({
+                success: false,
+                message: 'مبلغ أمر الشراء يجب أن يكون رقماً صحيحاً وأكبر من الصفر'
             });
         }
 
@@ -835,24 +943,17 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         // إدراج أمر الشراء
         const insertQuery = `
             INSERT INTO purchase_orders (
-                order_number,
-                supplier_name,
-                description,
-                amount,
-                status,
-                order_date,
-                delivery_date,
-                notes,
-                file_path
+                order_number, supplier_name, description, amount,
+                status, order_date, delivery_date, notes, file_path
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING id
+            RETURNING id, order_number, amount
         `;
         
         const insertResult = await client.query(insertQuery, [
             finalOrderNumber,
             supplierName.trim(),
             orderDescription.trim(),
-            parseFloat(orderAmount),
+            amount,
             orderStatus || 'pending',
             orderDate,
             deliveryDate || null,
@@ -862,10 +963,12 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
 
         await client.query('COMMIT');
 
+        const newOrder = insertResult.rows[0];
+
         console.log('✅ تم حفظ أمر الشراء بنجاح:', {
-            id: insertResult.rows[0].id,
-            order_number: finalOrderNumber,
-            amount: parseFloat(orderAmount),
+            id: newOrder.id,
+            order_number: newOrder.order_number,
+            amount: parseFloat(newOrder.amount),
             file_uploaded: !!req.file
         });
 
@@ -873,9 +976,9 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             success: true,
             message: 'تم حفظ أمر الشراء بنجاح' + (req.file ? ' مع الملف المرفق' : ''),
             data: {
-                id: insertResult.rows[0].id,
-                order_number: finalOrderNumber,
-                amount: parseFloat(orderAmount),
+                id: newOrder.id,
+                order_number: newOrder.order_number,
+                amount: parseFloat(newOrder.amount),
                 file_uploaded: !!req.file
             }
         });
@@ -920,13 +1023,8 @@ router.get('/payments/:supplier_name', async (req, res) => {
         
         const result = await pool.query(`
             SELECT 
-                id,
-                payment_date,
-                amount,
-                payment_method,
-                reference_number,
-                notes,
-                created_at
+                id, payment_date, amount, payment_method,
+                reference_number, notes, created_at
             FROM payments
             WHERE supplier_name = $1
             ORDER BY payment_date DESC
@@ -954,6 +1052,65 @@ router.get('/payments/:supplier_name', async (req, res) => {
             success: false,
             message: 'خطأ في جلب المدفوعات: ' + error.message,
             data: []
+        });
+    }
+});
+
+// ============== APIs إضافية مفيدة ==============
+
+// 📈 API تقرير شامل للنظام
+router.get('/reports/summary', async (req, res) => {
+    try {
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة',
+                data: null
+            });
+        }
+
+        const { start_date, end_date } = req.query;
+        
+        let dateFilter = '';
+        let params = [];
+        let paramIndex = 1;
+        
+        if (start_date && end_date) {
+            dateFilter = ` WHERE created_at BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
+            params.push(start_date, end_date);
+        }
+        
+        const summaryQuery = `
+            SELECT 
+                (SELECT COUNT(*) FROM suppliers) as total_suppliers,
+                (SELECT COUNT(*) FROM invoices ${dateFilter}) as total_invoices,
+                (SELECT COUNT(*) FROM purchase_orders ${dateFilter}) as total_orders,
+                (SELECT COALESCE(SUM(total_amount), 0) FROM invoices ${dateFilter}) as total_amount,
+                (SELECT COALESCE(SUM(amount), 0) FROM purchase_orders ${dateFilter}) as total_orders_amount
+        `;
+        
+        const result = await pool.query(summaryQuery, params);
+        const summary = result.rows[0];
+        
+        res.json({
+            success: true,
+            data: {
+                total_suppliers: parseInt(summary.total_suppliers),
+                total_invoices: parseInt(summary.total_invoices),
+                total_orders: parseInt(summary.total_orders),
+                total_amount: parseFloat(summary.total_amount),
+                total_orders_amount: parseFloat(summary.total_orders_amount),
+                period: start_date && end_date ? { start_date, end_date } : null
+            }
+        });
+        
+    } catch (error) {
+        console.error('خطأ في تقرير النظام:', error);
+        res.json({
+            success: false,
+            message: 'خطأ في إنشاء التقرير: ' + error.message,
+            data: null
         });
     }
 });
