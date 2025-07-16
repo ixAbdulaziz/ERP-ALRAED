@@ -5,44 +5,73 @@ const path = require('path');
 const fs = require('fs');
 const { pool } = require('../database');
 
-// إعداد multer لرفع الملفات
+console.log('🔧 تهيئة API routes...');
+
+// إعداد multer لرفع الملفات مع تحسينات
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, '../../uploads');
         
+        console.log('📁 فحص مجلد uploads:', uploadDir);
+        
         // التأكد من وجود مجلد uploads
         if (!fs.existsSync(uploadDir)) {
             try {
-                fs.mkdirSync(uploadDir, { recursive: true });
+                fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
+                fs.writeFileSync(path.join(uploadDir, '.gitkeep'), '');
                 console.log('✅ تم إنشاء مجلد uploads');
             } catch (error) {
                 console.error('❌ خطأ في إنشاء مجلد uploads:', error);
-                return cb(error);
+                return cb(new Error('فشل في إنشاء مجلد uploads: ' + error.message));
             }
+        }
+        
+        // التحقق من صلاحيات الكتابة
+        try {
+            fs.accessSync(uploadDir, fs.constants.W_OK);
+            console.log('✅ صلاحيات الكتابة متاحة');
+        } catch (error) {
+            console.error('❌ لا توجد صلاحيات كتابة في مجلد uploads:', error);
+            return cb(new Error('لا توجد صلاحيات كتابة في مجلد uploads'));
         }
         
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        // إنشاء اسم ملف فريد
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-        const extension = path.extname(originalName);
-        const baseName = path.basename(originalName, extension);
-        
-        cb(null, `${baseName}-${uniqueSuffix}${extension}`);
+        try {
+            // إنشاء اسم ملف فريد وآمن
+            const timestamp = Date.now();
+            const randomNum = Math.round(Math.random() * 1E9);
+            const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+            const extension = path.extname(originalName);
+            const baseName = path.basename(originalName, extension)
+                .replace(/[^a-zA-Z0-9\u0600-\u06FF\u0750-\u077F]/g, '_') // تنظيف اسم الملف
+                .substring(0, 50); // تحديد طول الاسم
+            
+            const filename = `${baseName}-${timestamp}-${randomNum}${extension}`;
+            console.log('📎 اسم الملف الجديد:', filename);
+            
+            cb(null, filename);
+        } catch (error) {
+            console.error('❌ خطأ في إنشاء اسم الملف:', error);
+            cb(new Error('خطأ في معالجة اسم الملف'));
+        }
     }
 });
 
 const fileFilter = (req, file, cb) => {
+    console.log('🔍 فحص نوع الملف:', file.mimetype, 'الاسم:', file.originalname);
+    
     // السماح بملفات PDF و الصور
     const allowedTypes = /jpeg|jpg|png|pdf|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
+        console.log('✅ نوع الملف مقبول');
         return cb(null, true);
     } else {
+        console.log('❌ نوع الملف مرفوض');
         cb(new Error('نوع الملف غير مدعوم. الرجاء رفع ملفات PDF أو صور فقط.'));
     }
 };
@@ -50,7 +79,10 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     limits: {
-        fileSize: 5 * 1024 * 1024 // حد أقصى 5 ميجابايت
+        fileSize: 5 * 1024 * 1024, // حد أقصى 5 ميجابايت
+        fieldSize: 1024 * 1024, // حد أقصى لحجم الحقل
+        fields: 20, // عدد الحقول المسموح
+        files: 1 // ملف واحد فقط
     },
     fileFilter: fileFilter
 });
@@ -87,19 +119,26 @@ async function checkColumnExists(tableName, columnName) {
 // 🧪 API اختبار الاتصال
 router.get('/test', async (req, res) => {
     try {
+        console.log('🧪 اختبار الاتصال...');
+        
         const dbConnected = await checkDatabaseConnection();
         
         if (dbConnected) {
             const result = await pool.query('SELECT NOW() as current_time, version() as db_version');
+            console.log('✅ قاعدة البيانات متصلة');
+            
             res.json({
                 success: true,
                 message: 'الخادم يعمل بنجاح!',
                 database: 'متصل ✅',
                 time: result.rows[0].current_time,
                 version: result.rows[0].db_version.split(' ')[0] + ' ' + result.rows[0].db_version.split(' ')[1],
-                system: 'ERP الرائد - الإصدار 3.2'
+                system: 'ERP الرائد - الإصدار 3.2',
+                uploads_dir: path.join(__dirname, '../../uploads'),
+                uploads_exists: fs.existsSync(path.join(__dirname, '../../uploads'))
             });
         } else {
+            console.log('❌ قاعدة البيانات غير متصلة');
             res.json({
                 success: true,
                 message: 'الخادم يعمل بنجاح!',
@@ -298,7 +337,7 @@ router.get('/suppliers', async (req, res) => {
 
 // ============== APIs الفواتير ==============
 
-// 📋 API جلب جميع الفواتير مع إمكانية الفلترة - لصفحة العرض (مع حماية من الأعمدة المفقودة)
+// 📋 API جلب جميع الفواتير مع إمكانية الفلترة - لصفحة العرض
 router.get('/invoices', async (req, res) => {
     try {
         console.log('📋 طلب الفواتير...');
@@ -313,7 +352,7 @@ router.get('/invoices', async (req, res) => {
             });
         }
 
-        // التحقق من وجود عمود status
+        // التحقق من وجود أعمدة إضافية
         const hasStatusColumn = await checkColumnExists('invoices', 'status');
         const hasUpdatedAtColumn = await checkColumnExists('invoices', 'updated_at');
 
@@ -330,7 +369,7 @@ router.get('/invoices', async (req, res) => {
         
         console.log('🔍 فلاتر البحث:', { supplier_name, search, date_from, date_to, invoice_type, category });
         
-        // بناء استعلام ديناميكي حسب الأعمدة المتاحة
+        // بناء استعلام ديناميكي
         let query = `
             SELECT 
                 id,
@@ -354,14 +393,14 @@ router.get('/invoices', async (req, res) => {
         const params = [];
         let paramIndex = 1;
         
-        // فلترة حسب المورد - مهم لصفحة العرض
+        // فلترة حسب المورد
         if (supplier_name) {
             query += ` AND supplier_name = $${paramIndex}`;
             params.push(supplier_name);
             paramIndex++;
         }
         
-        // البحث في رقم الفاتورة أو نوع الفاتورة أو الفئة أو الملاحظات
+        // البحث العام
         if (search) {
             query += ` AND (invoice_number ILIKE $${paramIndex} OR invoice_type ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR notes ILIKE $${paramIndex})`;
             params.push(`%${search}%`);
@@ -451,9 +490,7 @@ router.get('/recent-invoices', async (req, res) => {
             });
         }
 
-        // التحقق من وجود عمود status
         const hasStatusColumn = await checkColumnExists('invoices', 'status');
-
         const { limit = 5 } = req.query;
         
         const query = `
@@ -502,95 +539,24 @@ router.get('/recent-invoices', async (req, res) => {
     }
 });
 
-// 🔍 API جلب فاتورة محددة بـ ID
-router.get('/invoices/:id', async (req, res) => {
-    try {
-        const invoiceId = parseInt(req.params.id);
-        
-        if (isNaN(invoiceId)) {
-            return res.json({
-                success: false,
-                message: 'رقم الفاتورة غير صحيح'
-            });
-        }
-        
-        const dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-            return res.json({
-                success: false,
-                message: 'قاعدة البيانات غير متاحة',
-                data: null
-            });
-        }
-
-        // التحقق من وجود عمود status
-        const hasStatusColumn = await checkColumnExists('invoices', 'status');
-        const hasUpdatedAtColumn = await checkColumnExists('invoices', 'updated_at');
-
-        const query = `
-            SELECT 
-                id, invoice_number, supplier_name, invoice_type, category,
-                invoice_date, amount_before_tax, tax_amount, total_amount,
-                notes, file_path, created_at
-                ${hasStatusColumn ? ', status' : ", 'pending' as status"}
-                ${hasUpdatedAtColumn ? ', updated_at' : ', created_at as updated_at'}
-            FROM invoices
-            WHERE id = $1
-        `;
-        
-        const result = await pool.query(query, [invoiceId]);
-        
-        if (result.rows.length === 0) {
-            return res.json({
-                success: false,
-                message: 'الفاتورة غير موجودة',
-                data: null
-            });
-        }
-        
-        const invoice = {
-            id: result.rows[0].id,
-            invoice_number: result.rows[0].invoice_number,
-            supplier_name: result.rows[0].supplier_name,
-            invoice_type: result.rows[0].invoice_type,
-            category: result.rows[0].category,
-            invoice_date: result.rows[0].invoice_date,
-            amount_before_tax: parseFloat(result.rows[0].amount_before_tax),
-            tax_amount: parseFloat(result.rows[0].tax_amount || 0),
-            total_amount: parseFloat(result.rows[0].total_amount),
-            notes: result.rows[0].notes,
-            file_path: result.rows[0].file_path,
-            status: result.rows[0].status || 'pending',
-            created_at: result.rows[0].created_at,
-            updated_at: result.rows[0].updated_at
-        };
-
-        res.json({
-            success: true,
-            data: invoice
-        });
-        
-    } catch (error) {
-        console.error('خطأ في جلب الفاتورة:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في جلب الفاتورة: ' + error.message,
-            data: null
-        });
-    }
-});
-
 // ➕ API إضافة فاتورة جديدة مع رفع الملفات - لصفحة الإضافة
 router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
     let client;
     
     try {
         console.log('➕ طلب إضافة فاتورة جديدة...');
+        console.log('📝 بيانات الطلب:', req.body);
+        console.log('📎 ملف مرفوع:', req.file ? req.file.filename : 'لا يوجد');
         
         const dbConnected = await checkDatabaseConnection();
         if (!dbConnected) {
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                    console.log('🗑️ تم حذف الملف المرفوع بسبب خطأ قاعدة البيانات');
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -616,14 +582,15 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
             notes
         } = req.body;
 
-        console.log('البيانات المستلمة:', {
-            invoiceNumber,
+        console.log('📋 البيانات المستلمة:', {
+            invoiceNumber: invoiceNumber || 'تلقائي',
             supplierName,
-            invoiceType,
-            category,
+            invoiceType: invoiceType || 'عام',
+            category: category || 'عام',
             invoiceDate,
             amountBeforeTax,
-            taxAmount,
+            taxAmount: taxAmount || '0',
+            notes: notes ? 'موجود' : 'فارغ',
             fileUploaded: !!req.file
         });
 
@@ -631,7 +598,11 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         if (!supplierName || !invoiceDate || !amountBeforeTax) {
             await client.query('ROLLBACK');
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -643,10 +614,14 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         const amountBeforeTaxNum = parseFloat(amountBeforeTax);
         const taxAmountNum = parseFloat(taxAmount) || 0;
 
-        if (isNaN(amountBeforeTaxNum) || amountBeforeTaxNum < 0) {
+        if (isNaN(amountBeforeTaxNum) || amountBeforeTaxNum <= 0) {
             await client.query('ROLLBACK');
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -669,7 +644,11 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         if (duplicateCheck.rows.length > 0) {
             await client.query('ROLLBACK');
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -734,6 +713,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
         
         insertQuery += ') ' + values + ') RETURNING id, invoice_number, total_amount';
         
+        console.log('📤 تنفيذ استعلام الإدراج...');
         const insertResult = await client.query(insertQuery, params);
 
         await client.query('COMMIT');
@@ -754,26 +734,29 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
                 id: newInvoice.id,
                 invoice_number: newInvoice.invoice_number,
                 total_amount: parseFloat(newInvoice.total_amount),
-                file_uploaded: !!req.file
+                file_uploaded: !!req.file,
+                file_path: filePath
             }
         });
 
     } catch (error) {
         if (client) await client.query('ROLLBACK');
-        console.error('خطأ في إضافة الفاتورة:', error);
+        console.error('❌ خطأ في إضافة الفاتورة:', error);
         
         // حذف الملف المرفوع في حالة الخطأ
         if (req.file) {
             try {
                 fs.unlinkSync(req.file.path);
+                console.log('🗑️ تم حذف الملف المرفوع بسبب الخطأ');
             } catch (unlinkError) {
-                console.error('خطأ في حذف الملف:', unlinkError);
+                console.error('❌ خطأ في حذف الملف:', unlinkError);
             }
         }
         
         res.json({
             success: false,
-            message: 'حدث خطأ أثناء حفظ الفاتورة: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message)
+            message: 'حدث خطأ أثناء حفظ الفاتورة: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message),
+            error_details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     } finally {
         if (client) client.release();
@@ -782,7 +765,7 @@ router.post('/invoices', upload.single('invoiceFile'), async (req, res) => {
 
 // ============== APIs أوامر الشراء ==============
 
-// 🛒 API جلب جميع أوامر الشراء - لصفحة أوامر الشراء (مع حماية من الأعمدة المفقودة)
+// 🛒 API جلب جميع أوامر الشراء - لصفحة أوامر الشراء
 router.get('/purchase-orders', async (req, res) => {
     try {
         console.log('🛒 طلب أوامر الشراء...');
@@ -800,6 +783,7 @@ router.get('/purchase-orders', async (req, res) => {
         const hasOrderNumberColumn = await checkColumnExists('purchase_orders', 'order_number');
         const hasStatusColumn = await checkColumnExists('purchase_orders', 'status');
         const hasUpdatedAtColumn = await checkColumnExists('purchase_orders', 'updated_at');
+        const hasOrderDateColumn = await checkColumnExists('purchase_orders', 'order_date');
 
         const {
             supplier_name,
@@ -819,7 +803,7 @@ router.get('/purchase-orders', async (req, res) => {
                 description,
                 amount,
                 ${hasStatusColumn ? 'status,' : "'pending' as status,"}
-                order_date,
+                ${hasOrderDateColumn ? 'order_date,' : 'created_at::date as order_date,'}
                 delivery_date,
                 notes,
                 file_path,
@@ -858,14 +842,22 @@ router.get('/purchase-orders', async (req, res) => {
         }
         
         // فلترة حسب التاريخ
-        if (date_from) {
+        if (date_from && hasOrderDateColumn) {
             query += ` AND order_date >= $${paramIndex}`;
+            params.push(date_from);
+            paramIndex++;
+        } else if (date_from) {
+            query += ` AND created_at::date >= $${paramIndex}`;
             params.push(date_from);
             paramIndex++;
         }
         
-        if (date_to) {
+        if (date_to && hasOrderDateColumn) {
             query += ` AND order_date <= $${paramIndex}`;
+            params.push(date_to);
+            paramIndex++;
+        } else if (date_to) {
+            query += ` AND created_at::date <= $${paramIndex}`;
             params.push(date_to);
             paramIndex++;
         }
@@ -874,6 +866,7 @@ router.get('/purchase-orders', async (req, res) => {
         query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
         params.push(parseInt(limit), parseInt(offset));
         
+        console.log('📤 تنفيذ استعلام أوامر الشراء...');
         const result = await pool.query(query, params);
         
         const orders = result.rows.map(row => ({
@@ -900,7 +893,7 @@ router.get('/purchase-orders', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('خطأ في جلب أوامر الشراء:', error);
+        console.error('❌ خطأ في جلب أوامر الشراء:', error);
         res.json({
             success: false,
             message: 'خطأ في جلب أوامر الشراء: ' + error.message,
@@ -915,11 +908,17 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
     
     try {
         console.log('🛒 طلب إضافة أمر شراء جديد...');
+        console.log('📝 بيانات الطلب:', req.body);
+        console.log('📎 ملف مرفوع:', req.file ? req.file.filename : 'لا يوجد');
         
         const dbConnected = await checkDatabaseConnection();
         if (!dbConnected) {
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -930,6 +929,7 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         // التحقق من وجود الأعمدة
         const hasOrderNumberColumn = await checkColumnExists('purchase_orders', 'order_number');
         const hasStatusColumn = await checkColumnExists('purchase_orders', 'status');
+        const hasOrderDateColumn = await checkColumnExists('purchase_orders', 'order_date');
 
         client = await pool.connect();
         await client.query('BEGIN');
@@ -945,11 +945,15 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
             orderNotes
         } = req.body;
 
-        console.log('بيانات أمر الشراء المستلمة:', {
+        console.log('📋 البيانات المستلمة:', {
+            orderNumber: orderNumber || 'تلقائي',
             supplierName,
-            orderDescription: orderDescription?.substring(0, 50) + '...',
+            orderDescription: orderDescription ? orderDescription.substring(0, 50) + '...' : 'فارغ',
             orderAmount,
             orderDate,
+            deliveryDate: deliveryDate || 'غير محدد',
+            orderStatus: orderStatus || 'pending',
+            orderNotes: orderNotes ? 'موجود' : 'فارغ',
             fileUploaded: !!req.file
         });
 
@@ -957,7 +961,11 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         if (!supplierName || !orderDescription || !orderAmount || !orderDate) {
             await client.query('ROLLBACK');
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -967,10 +975,14 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
 
         // التحقق من صحة المبلغ
         const amount = parseFloat(orderAmount);
-        if (isNaN(amount) || amount < 0) {
+        if (isNaN(amount) || amount <= 0) {
             await client.query('ROLLBACK');
             if (req.file) {
-                fs.unlinkSync(req.file.path);
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch (unlinkError) {
+                    console.error('❌ خطأ في حذف الملف:', unlinkError);
+                }
             }
             return res.json({
                 success: false,
@@ -1010,21 +1022,42 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         // بناء استعلام الإدراج ديناميكياً
         let insertQuery = `
             INSERT INTO purchase_orders (
-                supplier_name, description, amount, order_date, delivery_date, notes, file_path
+                supplier_name, description, amount
         `;
         
-        let values = `VALUES ($1, $2, $3, $4, $5, $6, $7`;
+        let values = `VALUES ($1, $2, $3`;
         let params = [
             supplierName.trim(),
             orderDescription.trim(),
-            amount,
-            orderDate,
-            deliveryDate || null,
-            orderNotes ? orderNotes.trim() : null,
-            filePath
+            amount
         ];
         
-        let paramCount = 7;
+        let paramCount = 3;
+
+        // إضافة حقول إضافية حسب وجود الأعمدة
+        if (hasOrderDateColumn) {
+            insertQuery += ', order_date';
+            values += ', $' + (++paramCount);
+            params.push(orderDate);
+        }
+
+        if (deliveryDate) {
+            insertQuery += ', delivery_date';
+            values += ', $' + (++paramCount);
+            params.push(deliveryDate);
+        }
+
+        if (orderNotes) {
+            insertQuery += ', notes';
+            values += ', $' + (++paramCount);
+            params.push(orderNotes.trim());
+        }
+
+        if (filePath) {
+            insertQuery += ', file_path';
+            values += ', $' + (++paramCount);
+            params.push(filePath);
+        }
         
         // إضافة عمود order_number إذا كان موجوداً
         if (hasOrderNumberColumn) {
@@ -1042,6 +1075,7 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
         
         insertQuery += ') ' + values + ') RETURNING id, amount';
         
+        console.log('📤 تنفيذ استعلام الإدراج...');
         const insertResult = await client.query(insertQuery, params);
 
         await client.query('COMMIT');
@@ -1062,265 +1096,29 @@ router.post('/purchase-orders', upload.single('orderFile'), async (req, res) => 
                 id: newOrder.id,
                 order_number: finalOrderNumber,
                 amount: parseFloat(newOrder.amount),
-                file_uploaded: !!req.file
+                file_uploaded: !!req.file,
+                file_path: filePath
             }
         });
 
     } catch (error) {
         if (client) await client.query('ROLLBACK');
-        console.error('خطأ في إضافة أمر الشراء:', error);
+        console.error('❌ خطأ في إضافة أمر الشراء:', error);
         
         // حذف الملف المرفوع في حالة الخطأ
         if (req.file) {
             try {
                 fs.unlinkSync(req.file.path);
+                console.log('🗑️ تم حذف الملف المرفوع بسبب الخطأ');
             } catch (unlinkError) {
-                console.error('خطأ في حذف الملف:', unlinkError);
+                console.error('❌ خطأ في حذف الملف:', unlinkError);
             }
         }
         
         res.json({
             success: false,
-            message: 'حدث خطأ أثناء حفظ أمر الشراء: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message)
-        });
-    } finally {
-        if (client) client.release();
-    }
-});
-
-// ============== APIs المدفوعات ==============
-
-// 💰 API جلب مدفوعات مورد
-router.get('/payments/:supplier_name', async (req, res) => {
-    try {
-        const dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-            return res.json({
-                success: false,
-                message: 'قاعدة البيانات غير متاحة',
-                data: []
-            });
-        }
-
-        const supplierName = decodeURIComponent(req.params.supplier_name);
-        
-        const result = await pool.query(`
-            SELECT 
-                id, payment_date, amount, payment_method,
-                reference_number, notes, created_at
-            FROM payments
-            WHERE supplier_name = $1
-            ORDER BY payment_date DESC
-        `, [supplierName]);
-        
-        const payments = result.rows.map(row => ({
-            id: row.id,
-            payment_date: row.payment_date,
-            amount: parseFloat(row.amount),
-            payment_method: row.payment_method,
-            reference_number: row.reference_number,
-            notes: row.notes,
-            created_at: row.created_at
-        }));
-
-        res.json({
-            success: true,
-            data: payments,
-            total: payments.length
-        });
-        
-    } catch (error) {
-        console.error('خطأ في جلب المدفوعات:', error);
-        res.json({
-            success: false,
-            message: 'خطأ في جلب المدفوعات: ' + error.message,
-            data: []
-        });
-    }
-});
-
-// ============== إصلاح قاعدة البيانات ==============
-
-// 🔧 API إصلاح سريع لقاعدة البيانات - حل جميع مشاكل الأعمدة المفقودة
-router.get('/fix-database', async (req, res) => {
-    let client;
-    
-    try {
-        console.log('🔧 بدء إصلاح قاعدة البيانات...');
-        
-        const dbConnected = await checkDatabaseConnection();
-        if (!dbConnected) {
-            return res.json({
-                success: false,
-                message: 'قاعدة البيانات غير متاحة'
-            });
-        }
-
-        client = await pool.connect();
-        await client.query('BEGIN');
-        
-        const fixes = [];
-        
-        // 1. إضافة عمود status إلى جدول invoices
-        try {
-            await client.query(`
-                ALTER TABLE invoices 
-                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
-            `);
-            fixes.push('✅ تم إضافة عمود status إلى جدول invoices');
-            
-            // إضافة قيد check للعمود
-            await client.query(`
-                ALTER TABLE invoices 
-                DROP CONSTRAINT IF EXISTS invoices_status_check
-            `);
-            
-            await client.query(`
-                ALTER TABLE invoices 
-                ADD CONSTRAINT invoices_status_check 
-                CHECK (status IN ('pending', 'paid', 'cancelled', 'overdue'))
-            `);
-            fixes.push('✅ تم إضافة قيود التحقق لعمود status');
-            
-        } catch (error) {
-            fixes.push('⚠️ عمود status: ' + error.message);
-        }
-        
-        // 2. إضافة عمود order_number إلى جدول purchase_orders
-        try {
-            await client.query(`
-                ALTER TABLE purchase_orders 
-                ADD COLUMN IF NOT EXISTS order_number VARCHAR(100)
-            `);
-            fixes.push('✅ تم إضافة عمود order_number إلى جدول purchase_orders');
-            
-        } catch (error) {
-            fixes.push('⚠️ عمود order_number: ' + error.message);
-        }
-        
-        // 3. إضافة عمود updated_at إلى جميع الجداول
-        const tables = ['suppliers', 'invoices', 'purchase_orders'];
-        
-        for (const table of tables) {
-            try {
-                await client.query(`
-                    ALTER TABLE ${table} 
-                    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                `);
-                fixes.push(`✅ تم إضافة عمود updated_at إلى جدول ${table}`);
-                
-            } catch (error) {
-                fixes.push(`⚠️ عمود updated_at في ${table}: ${error.message}`);
-            }
-        }
-        
-        // 4. تحديث البيانات الموجودة
-        try {
-            // تحديث حالة الفواتير الفارغة
-            const invoiceUpdate = await client.query(`
-                UPDATE invoices 
-                SET status = 'pending' 
-                WHERE status IS NULL OR status = ''
-            `);
-            
-            if (invoiceUpdate.rowCount > 0) {
-                fixes.push(`✅ تم تحديث حالة ${invoiceUpdate.rowCount} فاتورة`);
-            }
-            
-            // إنشاء أرقام أوامر شراء مفقودة
-            const orderUpdate = await client.query(`
-                UPDATE purchase_orders 
-                SET order_number = LPAD(id::text, 4, '0')
-                WHERE order_number IS NULL OR order_number = ''
-            `);
-            
-            if (orderUpdate.rowCount > 0) {
-                fixes.push(`✅ تم إنشاء أرقام لـ ${orderUpdate.rowCount} أمر شراء`);
-            }
-            
-            // تحديث updated_at للسجلات الموجودة
-            for (const table of tables) {
-                await client.query(`
-                    UPDATE ${table} 
-                    SET updated_at = created_at 
-                    WHERE updated_at IS NULL
-                `);
-            }
-            fixes.push('✅ تم تحديث أوقات التعديل للسجلات الموجودة');
-            
-        } catch (error) {
-            fixes.push('⚠️ خطأ في تحديث البيانات: ' + error.message);
-        }
-        
-        // 5. إنشاء الفهارس المفقودة
-        try {
-            const indexes = [
-                'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)',
-                'CREATE INDEX IF NOT EXISTS idx_purchase_orders_number ON purchase_orders(order_number)',
-                'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_status ON invoices(supplier_name, status)'
-            ];
-            
-            for (const indexQuery of indexes) {
-                await client.query(indexQuery);
-            }
-            fixes.push('✅ تم إنشاء الفهارس المطلوبة');
-            
-        } catch (error) {
-            fixes.push('⚠️ خطأ في الفهارس: ' + error.message);
-        }
-        
-        // 6. إنشاء triggers للتحديث التلقائي
-        try {
-            await client.query(`
-                CREATE OR REPLACE FUNCTION update_updated_at_column()
-                RETURNS TRIGGER AS $$
-                BEGIN
-                    NEW.updated_at = CURRENT_TIMESTAMP;
-                    RETURN NEW;
-                END;
-                $$ language 'plpgsql';
-            `);
-            
-            const triggers = [
-                'DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers',
-                'CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
-                'DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices',
-                'CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
-                'DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders',
-                'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()'
-            ];
-            
-            for (const triggerQuery of triggers) {
-                await client.query(triggerQuery);
-            }
-            fixes.push('✅ تم إنشاء triggers للتحديث التلقائي');
-            
-        } catch (error) {
-            fixes.push('⚠️ تحذير في triggers: ' + error.message);
-        }
-        
-        await client.query('COMMIT');
-        
-        console.log('🎉 اكتمل إصلاح قاعدة البيانات بنجاح!');
-        console.log('📋 الإصلاحات المطبقة:', fixes);
-        
-        res.json({
-            success: true,
-            message: 'تم إصلاح قاعدة البيانات بنجاح! 🎉',
-            fixes: fixes,
-            timestamp: new Date().toISOString(),
-            note: 'يمكنك الآن استخدام جميع صفحات النظام بشكل طبيعي'
-        });
-        
-    } catch (error) {
-        if (client) await client.query('ROLLBACK');
-        console.error('❌ خطأ في إصلاح قاعدة البيانات:', error);
-        
-        res.json({
-            success: false,
-            message: 'فشل في إصلاح قاعدة البيانات: ' + error.message,
-            fixes: fixes || [],
-            error: error.message
+            message: 'حدث خطأ أثناء حفظ أمر الشراء: ' + (process.env.NODE_ENV === 'production' ? 'خطأ في النظام' : error.message),
+            error_details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     } finally {
         if (client) client.release();
@@ -1329,35 +1127,59 @@ router.get('/fix-database', async (req, res) => {
 
 // ============== معالجة الأخطاء ==============
 
-// معالجة أخطاء multer
+// معالجة أخطاء multer المحسنة
 router.use((error, req, res, next) => {
-    console.error('خطأ في API:', error);
+    console.error('❌ خطأ في API:', error.message);
+    console.error('📍 نوع الخطأ:', error.constructor.name);
     
     if (error instanceof multer.MulterError) {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.json({
                 success: false,
-                message: 'حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت'
+                message: 'حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت',
+                error_code: 'FILE_TOO_LARGE'
+            });
+        }
+        
+        if (error.code === 'LIMIT_FILE_COUNT') {
+            return res.json({
+                success: false,
+                message: 'عدد الملفات أكثر من المسموح',
+                error_code: 'TOO_MANY_FILES'
             });
         }
         
         return res.json({
             success: false,
-            message: 'خطأ في رفع الملف: ' + error.message
+            message: 'خطأ في رفع الملف: ' + error.message,
+            error_code: 'UPLOAD_ERROR'
         });
     }
     
     if (error.message.includes('نوع الملف غير مدعوم')) {
         return res.json({
             success: false,
-            message: error.message
+            message: error.message,
+            error_code: 'INVALID_FILE_TYPE'
+        });
+    }
+
+    if (error.message.includes('uploads')) {
+        return res.json({
+            success: false,
+            message: 'خطأ في مجلد الرفع: ' + error.message,
+            error_code: 'UPLOAD_DIR_ERROR'
         });
     }
     
     res.json({
         success: false,
-        message: 'حدث خطأ في الخادم: ' + error.message
+        message: 'حدث خطأ في الخادم: ' + error.message,
+        error_code: 'SERVER_ERROR',
+        error_details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
 });
+
+console.log('✅ تم تهيئة API routes بنجاح');
 
 module.exports = router;
