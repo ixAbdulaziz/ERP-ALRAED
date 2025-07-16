@@ -1115,6 +1115,264 @@ router.get('/reports/summary', async (req, res) => {
     }
 });
 
+// ============== إصلاح قاعدة البيانات ==============
+
+// 🔧 API إصلاح سريع لقاعدة البيانات - حل جميع مشاكل الأعمدة المفقودة
+router.get('/fix-database', async (req, res) => {
+    let client;
+    
+    try {
+        console.log('🔧 بدء إصلاح قاعدة البيانات...');
+        
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة'
+            });
+        }
+
+        client = await pool.connect();
+        await client.query('BEGIN');
+        
+        const fixes = [];
+        
+        // 1. إضافة عمود status إلى جدول invoices
+        try {
+            await client.query(`
+                ALTER TABLE invoices 
+                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+            `);
+            fixes.push('✅ تم إضافة عمود status إلى جدول invoices');
+            
+            // إضافة قيد check للعمود
+            await client.query(`
+                ALTER TABLE invoices 
+                DROP CONSTRAINT IF EXISTS invoices_status_check
+            `);
+            
+            await client.query(`
+                ALTER TABLE invoices 
+                ADD CONSTRAINT invoices_status_check 
+                CHECK (status IN ('pending', 'paid', 'cancelled', 'overdue'))
+            `);
+            fixes.push('✅ تم إضافة قيود التحقق لعمود status');
+            
+        } catch (error) {
+            fixes.push('⚠️ عمود status: ' + error.message);
+        }
+        
+        // 2. إضافة عمود order_number إلى جدول purchase_orders
+        try {
+            await client.query(`
+                ALTER TABLE purchase_orders 
+                ADD COLUMN IF NOT EXISTS order_number VARCHAR(100)
+            `);
+            fixes.push('✅ تم إضافة عمود order_number إلى جدول purchase_orders');
+            
+        } catch (error) {
+            fixes.push('⚠️ عمود order_number: ' + error.message);
+        }
+        
+        // 3. إضافة عمود updated_at إلى جميع الجداول
+        const tables = ['suppliers', 'invoices', 'purchase_orders'];
+        
+        for (const table of tables) {
+            try {
+                await client.query(`
+                    ALTER TABLE ${table} 
+                    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                `);
+                fixes.push(`✅ تم إضافة عمود updated_at إلى جدول ${table}`);
+                
+            } catch (error) {
+                fixes.push(`⚠️ عمود updated_at في ${table}: ${error.message}`);
+            }
+        }
+        
+        // 4. تحديث البيانات الموجودة
+        try {
+            // تحديث حالة الفواتير الفارغة
+            const invoiceUpdate = await client.query(`
+                UPDATE invoices 
+                SET status = 'pending' 
+                WHERE status IS NULL OR status = ''
+            `);
+            
+            if (invoiceUpdate.rowCount > 0) {
+                fixes.push(`✅ تم تحديث حالة ${invoiceUpdate.rowCount} فاتورة`);
+            }
+            
+            // إنشاء أرقام أوامر شراء مفقودة
+            const orderUpdate = await client.query(`
+                UPDATE purchase_orders 
+                SET order_number = LPAD(id::text, 4, '0')
+                WHERE order_number IS NULL OR order_number = ''
+            `);
+            
+            if (orderUpdate.rowCount > 0) {
+                fixes.push(`✅ تم إنشاء أرقام لـ ${orderUpdate.rowCount} أمر شراء`);
+            }
+            
+            // تحديث updated_at للسجلات الموجودة
+            for (const table of tables) {
+                await client.query(`
+                    UPDATE ${table} 
+                    SET updated_at = created_at 
+                    WHERE updated_at IS NULL
+                `);
+            }
+            fixes.push('✅ تم تحديث أوقات التعديل للسجلات الموجودة');
+            
+        } catch (error) {
+            fixes.push('⚠️ خطأ في تحديث البيانات: ' + error.message);
+        }
+        
+        // 5. إنشاء الفهارس المفقودة
+        try {
+            const indexes = [
+                'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)',
+                'CREATE INDEX IF NOT EXISTS idx_purchase_orders_number ON purchase_orders(order_number)',
+                'CREATE INDEX IF NOT EXISTS idx_invoices_supplier_status ON invoices(supplier_name, status)'
+            ];
+            
+            for (const indexQuery of indexes) {
+                await client.query(indexQuery);
+            }
+            fixes.push('✅ تم إنشاء الفهارس المطلوبة');
+            
+        } catch (error) {
+            fixes.push('⚠️ خطأ في الفهارس: ' + error.message);
+        }
+        
+        // 6. إنشاء triggers للتحديث التلقائي
+        try {
+            await client.query(`
+                CREATE OR REPLACE FUNCTION update_updated_at_column()
+                RETURNS TRIGGER AS $
+                BEGIN
+                    NEW.updated_at = CURRENT_TIMESTAMP;
+                    RETURN NEW;
+                END;
+                $ language 'plpgsql';
+            `);
+            
+            const triggers = [
+                'DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers',
+                'CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
+                'DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices',
+                'CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
+                'DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders',
+                'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()'
+            ];
+            
+            for (const triggerQuery of triggers) {
+                await client.query(triggerQuery);
+            }
+            fixes.push('✅ تم إنشاء triggers للتحديث التلقائي');
+            
+        } catch (error) {
+            fixes.push('⚠️ تحذير في triggers: ' + error.message);
+        }
+        
+        await client.query('COMMIT');
+        
+        console.log('🎉 اكتمل إصلاح قاعدة البيانات بنجاح!');
+        console.log('📋 الإصلاحات المطبقة:', fixes);
+        
+        res.json({
+            success: true,
+            message: 'تم إصلاح قاعدة البيانات بنجاح! 🎉',
+            fixes: fixes,
+            timestamp: new Date().toISOString(),
+            note: 'يمكنك الآن استخدام جميع صفحات النظام بشكل طبيعي'
+        });
+        
+    } catch (error) {
+        if (client) await client.query('ROLLBACK');
+        console.error('❌ خطأ في إصلاح قاعدة البيانات:', error);
+        
+        res.json({
+            success: false,
+            message: 'فشل في إصلاح قاعدة البيانات: ' + error.message,
+            fixes: fixes || [],
+            error: error.message
+        });
+    } finally {
+        if (client) client.release();
+    }
+});
+
+// 🔍 API للتحقق من بنية قاعدة البيانات
+router.get('/check-database', async (req, res) => {
+    try {
+        const dbConnected = await checkDatabaseConnection();
+        if (!dbConnected) {
+            return res.json({
+                success: false,
+                message: 'قاعدة البيانات غير متاحة'
+            });
+        }
+
+        // فحص الجداول والأعمدة
+        const tablesQuery = `
+            SELECT 
+                table_name,
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('suppliers', 'invoices', 'purchase_orders', 'payments')
+            ORDER BY table_name, ordinal_position
+        `;
+        
+        const result = await pool.query(tablesQuery);
+        
+        // تنظيم النتائج حسب الجدول
+        const tableStructure = {};
+        result.rows.forEach(row => {
+            if (!tableStructure[row.table_name]) {
+                tableStructure[row.table_name] = [];
+            }
+            tableStructure[row.table_name].push({
+                column: row.column_name,
+                type: row.data_type,
+                nullable: row.is_nullable === 'YES',
+                default: row.column_default
+            });
+        });
+        
+        // فحص عدد السجلات
+        const counts = {};
+        for (const table of ['suppliers', 'invoices', 'purchase_orders', 'payments']) {
+            try {
+                const countResult = await pool.query(`SELECT COUNT(*) FROM ${table}`);
+                counts[table] = parseInt(countResult.rows[0].count);
+            } catch (error) {
+                counts[table] = 'خطأ: ' + error.message;
+            }
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                tables: tableStructure,
+                counts: counts,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('خطأ في فحص قاعدة البيانات:', error);
+        res.json({
+            success: false,
+            message: 'خطأ في فحص قاعدة البيانات: ' + error.message
+        });
+    }
+});
+
 // ============== معالجة الأخطاء ==============
 
 // معالجة أخطاء multer
