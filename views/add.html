@@ -34,31 +34,6 @@
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
         }
 
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: #333 !important;
-        }
-
-        .nav-link {
-            color: #333 !important;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            border-radius: 10px;
-            margin: 0 5px;
-            padding: 10px 15px !important;
-        }
-
-        .nav-link:hover {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea !important;
-        }
-
-        .nav-link.active {
-            background: rgba(102, 126, 234, 0.2);
-            color: #667eea !important;
-        }
-
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -69,18 +44,6 @@
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
         }
 
-        .page-header h1 {
-            font-weight: 700;
-            margin: 0;
-            font-size: 2.2rem;
-        }
-
-        .page-header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
-            font-size: 1.1rem;
-        }
-
         .form-card {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(10px);
@@ -89,12 +52,6 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            transition: all 0.3s ease;
-        }
-
-        .form-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(31, 38, 135, 0.5);
         }
 
         .form-section-title {
@@ -107,45 +64,31 @@
             gap: 10px;
         }
 
-        .form-section-title i {
-            font-size: 1.2rem;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 8px;
-        }
-
         .form-control, .form-select {
             border: 2px solid #e9ecef;
             border-radius: 10px;
             padding: 12px 15px;
             font-size: 1rem;
             transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
         }
 
         .form-control:focus, .form-select:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-            background: rgba(255, 255, 255, 1);
         }
 
-        .form-control.is-invalid {
-            border-color: #dc3545;
-        }
-
-        .form-control.is-valid {
-            border-color: #28a745;
-        }
-
-        .input-group-text {
-            background: #667eea;
-            color: white;
-            border: 2px solid #667eea;
-            border-radius: 10px 0 0 10px;
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 10px;
             font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
 
         .file-upload-area {
@@ -154,67 +97,12 @@
             padding: 40px;
             text-align: center;
             background: rgba(102, 126, 234, 0.05);
-            transition: all 0.3s ease;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         .file-upload-area:hover {
             background: rgba(102, 126, 234, 0.1);
-            border-color: #5a67d8;
-        }
-
-        .file-upload-area i {
-            font-size: 3rem;
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .btn {
-            border-radius: 10px;
-            padding: 12px 25px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            border: none;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        .required-field::after {
-            content: " *";
-            color: #dc3545;
-            font-weight: bold;
-        }
-
-        .optional-field::after {
-            content: " (اختياري)";
-            color: #6c757d;
-            font-size: 0.8rem;
-            font-style: italic;
-        }
-
-        .tax-calculation {
-            background: rgba(102, 126, 234, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 15px;
         }
 
         .total-display {
@@ -224,34 +112,6 @@
             padding: 20px;
             text-align: center;
             margin-top: 20px;
-        }
-
-        .autocomplete-container {
-            position: relative;
-        }
-
-        .autocomplete-suggestions {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 0 0 10px 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-        }
-
-        .autocomplete-suggestion {
-            padding: 12px 15px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-
-        .autocomplete-suggestion:hover {
-            background: rgba(102, 126, 234, 0.1);
         }
 
         .alert {
@@ -267,40 +127,11 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .loading-spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 1.8rem;
-            }
-            
-            .form-card {
-                padding: 20px;
-            }
-            
-            .file-upload-area {
-                padding: 25px;
-            }
-        }
     </style>
 </head>
 <body>
-    <!-- Navigation -->
     <div class="main-container">
+        <!-- Navigation -->
         <nav class="navbar navbar-expand-lg navbar-custom fade-in">
             <div class="container-fluid">
                 <a class="navbar-brand fw-bold fs-4" href="/">
@@ -332,7 +163,7 @@
         <!-- Page Header -->
         <div class="page-header fade-in">
             <h1><i class="fas fa-plus-circle"></i> إضافة فاتورة جديدة</h1>
-            <p>أدخل بيانات الفاتورة الجديدة - الحقول المطلوبة فقط: اسم المورد، المبلغ، والتاريخ</p>
+            <p>أدخل بيانات الفاتورة الجديدة</p>
         </div>
 
         <!-- Alert Area -->
@@ -350,53 +181,35 @@
                     
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="invoiceNumber" class="form-label optional-field">رقم الفاتورة</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
-                            <input type="text" class="form-control" id="invoiceNumber" name="invoiceNumber" 
-                                   placeholder="اتركه فارغاً لتوليد رقم تلقائي">
-                        </div>
+                        <label for="invoiceNumber" class="form-label">رقم الفاتورة</label>
+                        <input type="text" class="form-control" id="invoiceNumber" name="invoiceNumber" 
+                               placeholder="اتركه فارغاً لتوليد رقم تلقائي">
                     </div>
                     
                     <div class="col-md-6 mb-3">
-                        <label for="invoiceDate" class="form-label required-field">تاريخ الفاتورة</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-calendar"></i></span>
-                            <input type="date" class="form-control" id="invoiceDate" name="invoiceDate" required>
-                        </div>
+                        <label for="invoiceDate" class="form-label">تاريخ الفاتورة *</label>
+                        <input type="date" class="form-control" id="invoiceDate" name="invoiceDate" required>
                     </div>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="supplierName" class="form-label required-field">اسم المورد</label>
-                        <div class="autocomplete-container">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-store"></i></span>
-                                <input type="text" class="form-control" id="supplierName" name="supplierName" 
-                                       placeholder="اكتب اسم المورد..." required autocomplete="off">
-                            </div>
-                            <div class="autocomplete-suggestions" id="supplierSuggestions"></div>
-                        </div>
+                        <label for="supplierName" class="form-label">اسم المورد *</label>
+                        <input type="text" class="form-control" id="supplierName" name="supplierName" 
+                               placeholder="اكتب اسم المورد..." required>
                     </div>
                     
                     <div class="col-md-6 mb-3">
-                        <label for="invoiceType" class="form-label optional-field">نوع الفاتورة</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-tags"></i></span>
-                            <input type="text" class="form-control" id="invoiceType" name="invoiceType" 
-                                   placeholder="مثال: مشتريات، خدمات، استشارات...">
-                        </div>
+                        <label for="invoiceType" class="form-label">نوع الفاتورة</label>
+                        <input type="text" class="form-control" id="invoiceType" name="invoiceType" 
+                               placeholder="مثال: مشتريات، خدمات، استشارات...">
                     </div>
                 </div>
                 
                 <div class="mb-3">
-                    <label for="category" class="form-label optional-field">اسم الفئة</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-folder"></i></span>
-                        <input type="text" class="form-control" id="category" name="category" 
-                               placeholder="مثل: فريق اول، فئات سنية، العاب مختلفة...">
-                    </div>
+                    <label for="category" class="form-label">اسم الفئة</label>
+                    <input type="text" class="form-control" id="category" name="category" 
+                           placeholder="مثال: فريق اول، فئات سنية، العاب مختلفة...">
                 </div>
             </div>
 
@@ -409,50 +222,34 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="amountBeforeTax" class="form-label required-field">المبلغ قبل الضريبة</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-money-bill"></i></span>
-                            <input type="number" class="form-control" id="amountBeforeTax" name="amountBeforeTax" 
-                                   step="0.01" min="0" placeholder="0.00" required>
-                            <span class="input-group-text">ريال</span>
-                        </div>
+                        <label for="amountBeforeTax" class="form-label">المبلغ قبل الضريبة *</label>
+                        <input type="number" class="form-control" id="amountBeforeTax" name="amountBeforeTax" 
+                               step="0.01" min="0" placeholder="0.00" required>
                     </div>
                     
                     <div class="col-md-6 mb-3">
-                        <label for="taxAmount" class="form-label optional-field">قيمة الضريبة</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-percent"></i></span>
-                            <input type="number" class="form-control" id="taxAmount" name="taxAmount" 
-                                   step="0.01" min="0" value="0" placeholder="0.00">
-                            <span class="input-group-text">ريال</span>
-                        </div>
+                        <label for="taxAmount" class="form-label">قيمة الضريبة</label>
+                        <input type="number" class="form-control" id="taxAmount" name="taxAmount" 
+                               step="0.01" min="0" value="0" placeholder="0.00">
                     </div>
                 </div>
                 
                 <!-- Tax Calculation Helper -->
-                <div class="tax-calculation">
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="calculateTax(15)">
-                                <i class="fas fa-calculator"></i> ضريبة 15%
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="calculateTax(5)">
-                                <i class="fas fa-calculator"></i> ضريبة 5%
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="calculateTax(0)">
-                                <i class="fas fa-calculator"></i> بدون ضريبة
-                            </button>
-                        </div>
-                    </div>
+                <div class="text-center mb-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="calculateTax(15)">
+                        ضريبة 15%
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="calculateTax(5)">
+                        ضريبة 5%
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="calculateTax(0)">
+                        بدون ضريبة
+                    </button>
                 </div>
                 
                 <!-- Total Display -->
                 <div class="total-display">
-                    <h4><i class="fas fa-receipt"></i> إجمالي الفاتورة: <span id="totalAmount">0.00</span> ريال</h4>
+                    <h4>إجمالي الفاتورة: <span id="totalAmount">0.00</span> ريال</h4>
                 </div>
             </div>
 
@@ -464,7 +261,7 @@
                 </div>
                 
                 <div class="mb-3">
-                    <label for="notes" class="form-label optional-field">ملاحظات</label>
+                    <label for="notes" class="form-label">ملاحظات</label>
                     <textarea class="form-control" id="notes" name="notes" rows="4" 
                               placeholder="أدخل أي ملاحظات إضافية..."></textarea>
                 </div>
@@ -478,9 +275,9 @@
                 </div>
                 
                 <div class="file-upload-area" onclick="document.getElementById('invoiceFile').click()">
-                    <i class="fas fa-cloud-upload-alt"></i>
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
                     <h5>انقر لرفع ملف الفاتورة</h5>
-                    <p class="text-muted">PDF, JPG, PNG (الحد الأقصى: 5 ميجابايت) - اختياري</p>
+                    <p class="text-muted">PDF, JPG, PNG (الحد الأقصى: 5 ميجابايت)</p>
                     <input type="file" id="invoiceFile" name="invoiceFile" accept=".pdf,.jpg,.jpeg,.png" 
                            style="display: none;" onchange="displayFileName()">
                 </div>
@@ -489,10 +286,8 @@
 
             <!-- Action Buttons -->
             <div class="form-card text-center fade-in">
-                <button type="submit" class="btn btn-primary btn-lg me-3">
-                    <i class="fas fa-save"></i> 
-                    <span id="submitText">حفظ الفاتورة</span>
-                    <div class="loading-spinner d-inline-block ms-2" id="loadingSpinner"></div>
+                <button type="submit" class="btn btn-primary btn-lg me-3" id="submitBtn">
+                    <i class="fas fa-save"></i> حفظ الفاتورة
                 </button>
                 <button type="reset" class="btn btn-secondary btn-lg">
                     <i class="fas fa-undo"></i> إعادة تعيين
@@ -564,226 +359,79 @@
             alertArea.scrollIntoView({ behavior: 'smooth' });
         }
         
-        // Form submission - المُحسن والمُصلح
+        // Form submission
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // جلب البيانات من الحقول
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            // Validate required fields
             const supplierName = document.getElementById('supplierName').value.trim();
             const invoiceDate = document.getElementById('invoiceDate').value;
             const amountBeforeTax = document.getElementById('amountBeforeTax').value;
             
-            // إنشاء رقم فاتورة تلقائي إذا لم يتم إدخاله
-            let invoiceNumber = document.getElementById('invoiceNumber').value.trim();
-            if (!invoiceNumber) {
-                invoiceNumber = 'INV-' + Date.now();
-                document.getElementById('invoiceNumber').value = invoiceNumber;
+            if (!supplierName || !invoiceDate || !amountBeforeTax) {
+                showAlert('الرجاء ملء جميع الحقول المطلوبة', 'danger');
+                return;
             }
             
-            const invoiceType = document.getElementById('invoiceType').value.trim() || 'عام';
-            const category = document.getElementById('category').value.trim() || 'عام';
-            const taxAmount = document.getElementById('taxAmount').value || 0;
-            const notes = document.getElementById('notes').value.trim();
-
-            console.log('🔍 البيانات المُدخلة:', {
-                invoiceNumber,
-                supplierName,
-                invoiceType,
-                category,
-                invoiceDate,
-                amountBeforeTax,
-                taxAmount,
-                notes
-            });
-
-            // التحقق من الحقول المطلوبة فقط
-            if (!supplierName || !invoiceDate || !amountBeforeTax) {
-                showAlert('الرجاء ملء الحقول المطلوبة: اسم المورد، التاريخ، والمبلغ', 'danger');
-                
-                // تمييز الحقول المطلوبة الفارغة
-                if (!supplierName) {
-                    document.getElementById('supplierName').classList.add('is-invalid');
-                } else {
-                    document.getElementById('supplierName').classList.remove('is-invalid');
-                }
-                
-                if (!invoiceDate) {
-                    document.getElementById('invoiceDate').classList.add('is-invalid');
-                } else {
-                    document.getElementById('invoiceDate').classList.remove('is-invalid');
-                }
-                
-                if (!amountBeforeTax) {
-                    document.getElementById('amountBeforeTax').classList.add('is-invalid');
-                } else {
-                    document.getElementById('amountBeforeTax').classList.remove('is-invalid');
-                }
-                
-                return;
+            // Create form data
+            const formData = new FormData(this);
+            
+            // Auto generate invoice number if empty
+            if (!formData.get('invoiceNumber')) {
+                formData.set('invoiceNumber', 'INV-' + Date.now());
             }
-
-            // التحقق من صحة المبلغ
-            if (parseFloat(amountBeforeTax) <= 0) {
-                showAlert('المبلغ يجب أن يكون أكبر من صفر', 'danger');
-                document.getElementById('amountBeforeTax').focus();
-                return;
+            
+            // Set default values
+            if (!formData.get('invoiceType')) {
+                formData.set('invoiceType', 'عام');
             }
-
-            // إنشاء FormData
-            const formData = new FormData();
-            formData.append('invoiceNumber', invoiceNumber);
-            formData.append('supplierName', supplierName);
-            formData.append('invoiceType', invoiceType);
-            formData.append('category', category);
-            formData.append('invoiceDate', invoiceDate);
-            formData.append('amountBeforeTax', amountBeforeTax);
-            formData.append('taxAmount', taxAmount);
-            formData.append('notes', notes);
-
-            // إضافة الملف المرفق
-            const fileInput = document.getElementById('invoiceFile');
-            if (fileInput.files.length > 0) {
-                formData.append('invoiceFile', fileInput.files[0]);
-                console.log('📎 ملف مرفق:', fileInput.files[0].name);
+            
+            if (!formData.get('category')) {
+                formData.set('category', 'عام');
             }
-
+            
             try {
-                // إظهار مؤشر التحميل
-                const submitBtn = document.querySelector('button[type="submit"]');
-                const submitText = document.getElementById('submitText');
-                const loadingSpinner = document.getElementById('loadingSpinner');
-                
-                submitText.textContent = 'جاري الحفظ...';
-                loadingSpinner.style.display = 'inline-block';
+                // Show loading state
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
                 submitBtn.disabled = true;
-
-                console.log('📤 إرسال البيانات إلى الخادم...');
-
+                
                 const response = await fetch('/api/invoices', {
                     method: 'POST',
                     body: formData
                 });
-
-                console.log('📬 استجابة الخادم:', response.status);
-
+                
                 const result = await response.json();
-                console.log('📋 نتيجة العملية:', result);
-
+                
                 if (result.success) {
                     showAlert('تم حفظ الفاتورة بنجاح! 🎉', 'success');
                     
-                    // إعادة تعيين النموذج
-                    document.getElementById('invoiceForm').reset();
+                    // Reset form
+                    this.reset();
                     document.getElementById('fileName').style.display = 'none';
                     document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
                     updateTotalAmount();
                     
-                    // إزالة تمييز الحقول
-                    document.querySelectorAll('.is-invalid').forEach(field => {
-                        field.classList.remove('is-invalid');
-                    });
-                    
-                    // إعادة التوجه للصفحة الرئيسية بعد 2 ثانية
+                    // Redirect to home page after 2 seconds
                     setTimeout(() => {
                         window.location.href = '/';
                     }, 2000);
                 } else {
-                    showAlert('خطأ: ' + (result.message || 'حدث خطأ أثناء حفظ الفاتورة'), 'danger');
-                    console.error('❌ خطأ من الخادم:', result);
+                    showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
-                console.error('❌ خطأ في الاتصال:', error);
-                showAlert('خطأ في الاتصال بالخادم. تأكد من اتصالك بالإنترنت.', 'danger');
+                console.error('Error:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
             } finally {
-                // إستعادة الزر
-                const submitBtn = document.querySelector('button[type="submit"]');
-                const submitText = document.getElementById('submitText');
-                const loadingSpinner = document.getElementById('loadingSpinner');
-                
-                submitText.textContent = 'حفظ الفاتورة';
-                loadingSpinner.style.display = 'none';
+                // Restore button
+                submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
         });
         
-        // تحسين validation للحقول
-        document.querySelectorAll('input[required]').forEach(input => {
-            input.addEventListener('blur', function() {
-                if (this.value.trim() === '') {
-                    this.classList.add('is-invalid');
-                } else {
-                    this.classList.remove('is-invalid');
-                    this.classList.add('is-valid');
-                }
-            });
-            
-            input.addEventListener('input', function() {
-                if (this.value.trim() !== '') {
-                    this.classList.remove('is-invalid');
-                    this.classList.add('is-valid');
-                }
-            });
-        });
-        
-        // Supplier autocomplete
-        let suppliers = [];
-        
-        // Load suppliers for autocomplete
-        async function loadSuppliers() {
-            try {
-                const response = await fetch('/api/suppliers');
-                const result = await response.json();
-                if (result.success) {
-                    suppliers = result.data;
-                    console.log('📋 تم تحميل', suppliers.length, 'مورد');
-                }
-            } catch (error) {
-                console.error('خطأ في تحميل الموردين:', error);
-            }
-        }
-        
-        // Initialize autocomplete
-        document.getElementById('supplierName').addEventListener('input', function() {
-            const query = this.value.toLowerCase();
-            const suggestions = document.getElementById('supplierSuggestions');
-            
-            if (query.length < 2) {
-                suggestions.style.display = 'none';
-                return;
-            }
-            
-            const filteredSuppliers = suppliers.filter(supplier => 
-                supplier.name.toLowerCase().includes(query)
-            );
-            
-            if (filteredSuppliers.length > 0) {
-                suggestions.innerHTML = filteredSuppliers.map(supplier => 
-                    `<div class="autocomplete-suggestion" onclick="selectSupplier('${supplier.name}')">${supplier.name}</div>`
-                ).join('');
-                suggestions.style.display = 'block';
-            } else {
-                suggestions.style.display = 'none';
-            }
-        });
-        
-        function selectSupplier(name) {
-            document.getElementById('supplierName').value = name;
-            document.getElementById('supplierSuggestions').style.display = 'none';
-            document.getElementById('supplierName').classList.remove('is-invalid');
-            document.getElementById('supplierName').classList.add('is-valid');
-        }
-        
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.autocomplete-container')) {
-                document.getElementById('supplierSuggestions').style.display = 'none';
-            }
-        });
-        
-        // Load suppliers on page load
-        loadSuppliers();
-        
-        console.log('✅ تم تحميل نظام إضافة الفواتير المُحسن!');
+        console.log('✅ تم تحميل صفحة إضافة الفواتير');
     </script>
 </body>
 </html>
