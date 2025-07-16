@@ -119,6 +119,25 @@
             margin-bottom: 20px;
         }
 
+        .nav-link {
+            color: #333 !important;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-radius: 10px;
+            margin: 0 5px;
+            padding: 10px 15px !important;
+        }
+
+        .nav-link:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea !important;
+        }
+
+        .nav-link.active {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea !important;
+        }
+
         .fade-in {
             animation: fadeIn 1s ease-in;
         }
@@ -289,7 +308,7 @@
                 <button type="submit" class="btn btn-primary btn-lg me-3" id="submitBtn">
                     <i class="fas fa-save"></i> حفظ الفاتورة
                 </button>
-                <button type="reset" class="btn btn-secondary btn-lg">
+                <button type="reset" class="btn btn-secondary btn-lg" onclick="resetForm()">
                     <i class="fas fa-undo"></i> إعادة تعيين
                 </button>
             </div>
@@ -330,7 +349,26 @@
             
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fileName.innerHTML = `<i class="fas fa-file"></i> الملف المحدد: <strong>${file.name}</strong>`;
+                
+                // التحقق من حجم الملف
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlert('حجم الملف كبير جداً. الحد الأقصى 5 ميجابايت', 'danger');
+                    fileInput.value = '';
+                    fileName.style.display = 'none';
+                    return;
+                }
+                
+                // التحقق من نوع الملف
+                const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+                if (!allowedTypes.includes(file.type)) {
+                    showAlert('نوع الملف غير مدعوم. يرجى رفع ملفات PDF أو صور فقط', 'danger');
+                    fileInput.value = '';
+                    fileName.style.display = 'none';
+                    return;
+                }
+                
+                const fileIcon = file.type === 'application/pdf' ? 'fas fa-file-pdf text-danger' : 'fas fa-file-image text-success';
+                fileName.innerHTML = `<i class="${fileIcon}"></i> الملف المحدد: <strong>${file.name}</strong>`;
                 fileName.style.display = 'block';
             }
         }
@@ -358,10 +396,20 @@
             // Scroll to alert
             alertArea.scrollIntoView({ behavior: 'smooth' });
         }
+
+        // Reset form function
+        function resetForm() {
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('fileName').style.display = 'none';
+            document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
+            updateTotalAmount();
+        }
         
         // Form submission
         document.getElementById('invoiceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            console.log('💾 محاولة حفظ فاتورة جديدة...');
             
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.innerHTML;
@@ -373,6 +421,11 @@
             
             if (!supplierName || !invoiceDate || !amountBeforeTax) {
                 showAlert('الرجاء ملء جميع الحقول المطلوبة', 'danger');
+                return;
+            }
+
+            if (parseFloat(amountBeforeTax) <= 0) {
+                showAlert('يجب أن يكون مبلغ الفاتورة أكبر من الصفر', 'danger');
                 return;
             }
             
@@ -393,43 +446,64 @@
                 formData.set('category', 'عام');
             }
             
+            // طباعة البيانات للتحقق
+            console.log('📝 بيانات النموذج:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`${key}: ${value}`);
+            }
+            
             try {
                 // Show loading state
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
                 submitBtn.disabled = true;
+                
+                console.log('📡 إرسال طلب إلى الخادم...');
                 
                 const response = await fetch('/api/invoices', {
                     method: 'POST',
                     body: formData
                 });
                 
+                console.log('📨 حالة الاستجابة:', response.status);
+                
                 const result = await response.json();
+                console.log('📥 استجابة الخادم:', result);
                 
                 if (result.success) {
                     showAlert('تم حفظ الفاتورة بنجاح! 🎉', 'success');
                     
                     // Reset form
-                    this.reset();
-                    document.getElementById('fileName').style.display = 'none';
-                    document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];
-                    updateTotalAmount();
+                    resetForm();
                     
-                    // Redirect to home page after 2 seconds
+                    // Redirect to home page after 3 seconds
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 2000);
+                    }, 3000);
                 } else {
+                    console.error('❌ خطأ من الخادم:', result.message);
                     showAlert('خطأ: ' + result.message, 'danger');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                showAlert('خطأ في الاتصال بالخادم', 'danger');
+                console.error('❌ خطأ في حفظ الفاتورة:', error);
+                showAlert('خطأ في الاتصال بالخادم: ' + error.message, 'danger');
             } finally {
                 // Restore button
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
         });
+        
+        // Test connection on page load
+        fetch('/api/test')
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ اتصال ناجح بالخادم:', data);
+                showAlert('تم الاتصال بالخادم بنجاح', 'success');
+            })
+            .catch(error => {
+                console.error('❌ خطأ في الاتصال:', error);
+                showAlert('خطأ في الاتصال بالخادم', 'danger');
+            });
         
         console.log('✅ تم تحميل صفحة إضافة الفواتير');
     </script>
