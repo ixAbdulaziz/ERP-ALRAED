@@ -292,7 +292,25 @@ async function createTriggers(client) {
             END;
             $$ language 'plpgsql';
         `);
-        
+
+        // إزالة أي "trigger" قديم غير ضروري من purchase_orders
+        await client.query(`
+            DROP TRIGGER IF EXISTS validate_dates ON purchase_orders;
+        `);
+
+        // إنشاء function للتحقق من التواريخ (لـ invoices فقط)
+        await client.query(`
+            CREATE OR REPLACE FUNCTION validate_dates()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                IF TG_TABLE_NAME = 'invoices' AND NEW.invoice_date > CURRENT_DATE + INTERVAL '1 day' THEN
+                    RAISE EXCEPTION 'Invoice date cannot be in the future';
+                END IF;
+                RETURN NEW;
+            END;
+            $$ language 'plpgsql';
+        `);
+
         // إنشاء triggers للجداول
         const triggers = [
             'DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers',
@@ -300,7 +318,9 @@ async function createTriggers(client) {
             'DROP TRIGGER IF EXISTS update_invoices_updated_at ON invoices',
             'CREATE TRIGGER update_invoices_updated_at BEFORE UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
             'DROP TRIGGER IF EXISTS update_purchase_orders_updated_at ON purchase_orders',
-            'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()'
+            'CREATE TRIGGER update_purchase_orders_updated_at BEFORE UPDATE ON purchase_orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
+            'DROP TRIGGER IF EXISTS validate_dates ON invoices',
+            'CREATE TRIGGER validate_dates BEFORE INSERT OR UPDATE ON invoices FOR EACH ROW EXECUTE FUNCTION validate_dates()'
         ];
         
         for (const triggerQuery of triggers) {
