@@ -119,15 +119,13 @@ router.get('/stats', async (req, res) => {
 
 // ============== APIs الموردين ==============
 
-// 🏢 API جلب الموردين مع إحصائياتهم المفصلة
+// 🏢 API جلب الموردين مع إحصائياتهم المفصلة - مُحدث
 router.get('/suppliers-with-stats', async (req, res) => {
     try {
         const query = `
             SELECT 
                 s.id,
                 s.name,
-                s.contact_info,
-                s.address,
                 COUNT(DISTINCT i.id) as invoice_count,
                 COALESCE(SUM(i.total_amount), 0) as total_amount,
                 COUNT(DISTINCT po.id) as purchase_orders_count,
@@ -137,7 +135,7 @@ router.get('/suppliers-with-stats', async (req, res) => {
             FROM suppliers s
             LEFT JOIN invoices i ON s.name = i.supplier_name
             LEFT JOIN purchase_orders po ON s.name = po.supplier_name
-            GROUP BY s.id, s.name, s.contact_info, s.address, s.created_at
+            GROUP BY s.id, s.name, s.created_at
             ORDER BY s.created_at DESC
         `;
         
@@ -146,8 +144,6 @@ router.get('/suppliers-with-stats', async (req, res) => {
         const suppliers = result.rows.map(row => ({
             id: row.id,
             name: row.name,
-            contact_info: row.contact_info,
-            address: row.address,
             invoice_count: parseInt(row.invoice_count),
             total_amount: parseFloat(row.total_amount),
             purchase_orders_count: parseInt(row.purchase_orders_count),
